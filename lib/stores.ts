@@ -409,7 +409,7 @@ export function usePausesStore() {
 
 export interface Niveau {
   id: string;
-  nom: string;        // ex: "6ème", "Form 1", "Seconde pro"
+  nom: string;        // ex: "6ème", "Form 1", 
   description?: string;
   ordre: number;      // pour l'ordre d'affichage
 }
