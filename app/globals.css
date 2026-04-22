@@ -1,0 +1,29 @@
+@import "tailwindcss";
+
+/* Si tu as des erreurs, remplace la ligne au-dessus par les 3 lignes classiques : */
+/* @tailwind base;
+@tailwind components;
+@tailwind utilities;
+*/
+
+@theme {
+  --color-admin-dark: #1e293b;
+  --color-admin-blue: #3b82f6;
+}
+
+:root {
+  background-color: #f8fafc;
+}
+
+body {
+  @apply antialiased text-slate-900;
+}
+
+/* Scrollbar discrète */
+::-webkit-scrollbar {
+  width: 5px;
+}
+::-webkit-scrollbar-thumb {
+  background: #cbd5e1;
+  border-radius: 10px;
+}
