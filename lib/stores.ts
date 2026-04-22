@@ -411,3 +411,53 @@ export function usePausesStore() {
   ];
   return useIndexedDB("pauses", initialPauses);
 }
+// lib/stores.ts - Ajouter ces interfaces
+
+export interface Devoir {
+  id: string;
+  titre: string;
+  description: string;
+  matiere: string;
+  classe: string;
+  professeur: string;
+  professeurId: number;
+  datePublication: string;
+  dateLimite: string;
+  fichiers: Fichier[];
+  type: "devoir" | "exercice" | "projet" | "examen";
+  coefficient?: number;
+  noteSur?: number;
+}
+
+export interface Fichier {
+  id: string;
+  nom: string;
+  url: string;
+  type: "pdf" | "image" | "doc" | "other";
+  taille: number;
+  dateUpload: string;
+}
+
+export interface Rendu {
+  id: string;
+  devoirId: string;
+  eleveId: number;
+  eleveNom: string;
+  dateRendu: string;
+  fichiers: Fichier[];
+  note?: number;
+  appreciation?: string;
+  corrige?: Fichier[];
+  estCorrige: boolean;
+}
+
+export interface Commentaire {
+  id: string;
+  devoirId: string;
+  eleveId: number;
+  eleveNom: string;
+  professeurId?: number;
+  professeurNom?: string;
+  contenu: string;
+  date: string;
+}
