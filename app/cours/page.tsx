@@ -23,17 +23,17 @@ function calculerProgression(course: any): number {
   return totalChapitres === 0 ? 0 : Math.round((chapitresFaits / totalChapitres) * 100);
 }
 
+// Modal d'ajout/modification
 function CoursModal({ cours, onSave, onClose }: any) {
   const [form, setForm] = useState({
     matiere: cours?.matiere || "",
     professeur: cours?.professeur || "",
     salle: cours?.salle || "",
     classe: cours?.classe || "6A",
-    jour: cours?.jour || "Lundi",
-    heure: cours?.heure || "8h-10h",
-    students: cours?.students || 0,
     coefficient: cours?.coefficient || 1,
     status: cours?.status || "En cours",
+    jour: cours?.jour || "Lundi",
+    heure: cours?.heure || "8h-10h",
   });
 
   const handleSubmit = (e: React.FormEvent) => {
@@ -45,7 +45,7 @@ function CoursModal({ cours, onSave, onClose }: any) {
     <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
       <div className="bg-white rounded-3xl max-w-md w-full p-6 shadow-2xl">
         <div className="flex justify-between items-center mb-4">
-          <h3 className="text-xl font-bold">{cours ? "Modifier le cours" : "Ajouter un cours"}</h3>
+          <h3 className="text-xl font-bold">{cours ? "Modifier" : "Ajouter"} un cours</h3>
           <button onClick={onClose} className="text-slate-400 hover:text-slate-600"><X size={20}/></button>
         </div>
         <form onSubmit={handleSubmit} className="space-y-4">
@@ -53,8 +53,9 @@ function CoursModal({ cours, onSave, onClose }: any) {
           <div><label>Enseignant</label><input required value={form.professeur} onChange={e => setForm({...form, professeur: e.target.value})} className="w-full border rounded-xl p-2 mt-1" /></div>
           <div><label>Salle</label><input required value={form.salle} onChange={e => setForm({...form, salle: e.target.value})} className="w-full border rounded-xl p-2 mt-1" /></div>
           <div><label>Classe</label><select value={form.classe} onChange={e => setForm({...form, classe: e.target.value})} className="w-full border rounded-xl p-2"><option>6A</option><option>5B</option><option>4A</option><option>3A</option><option>2nde</option><option>1ere</option><option>Tle</option></select></div>
-          <div className="grid grid-cols-2 gap-2"><div><label>Jour</label><select value={form.jour} onChange={e => setForm({...form, jour: e.target.value})} className="w-full border rounded-xl p-2"><option>Lundi</option><option>Mardi</option><option>Mercredi</option><option>Jeudi</option><option>Vendredi</option><option>Samedi</option></select></div><div><label>Horaire</label><select value={form.heure} onChange={e => setForm({...form, heure: e.target.value})} className="w-full border rounded-xl p-2"><option>8h-10h</option><option>10h-12h</option><option>12h-14h</option><option>14h-16h</option><option>16h-18h</option></select></div></div>
-          <div className="grid grid-cols-2 gap-2"><div><label>Nb élèves</label><input type="number" value={form.students} onChange={e => setForm({...form, students: parseInt(e.target.value)})} className="w-full border rounded-xl p-2" /></div><div><label>Coefficient</label><input type="number" step="0.5" value={form.coefficient} onChange={e => setForm({...form, coefficient: parseFloat(e.target.value)})} className="w-full border rounded-xl p-2" /></div></div>
+          <div><label>Coefficient</label><input type="number" step="0.5" value={form.coefficient} onChange={e => setForm({...form, coefficient: parseFloat(e.target.value)})} className="w-full border rounded-xl p-2 mt-1" /></div>
+          <div><label>Jour</label><select value={form.jour} onChange={e => setForm({...form, jour: e.target.value})} className="w-full border rounded-xl p-2"><option>Lundi</option><option>Mardi</option><option>Mercredi</option><option>Jeudi</option><option>Vendredi</option><option>Samedi</option></select></div>
+          <div><label>Horaire</label><input required value={form.heure} onChange={e => setForm({...form, heure: e.target.value})} placeholder="8h-10h" className="w-full border rounded-xl p-2 mt-1" /></div>
           <div><label>Statut</label><select value={form.status} onChange={e => setForm({...form, status: e.target.value})} className="w-full border rounded-xl p-2"><option>En cours</option><option>Avancé</option><option>En retard</option><option>Terminé</option></select></div>
           <div className="flex gap-3 pt-2">
             <button type="submit" className="flex-1 bg-blue-600 text-white py-2 rounded-xl font-semibold">Enregistrer</button>
@@ -114,10 +115,9 @@ export default function CoursesPage() {
   const stats = useMemo(() => {
     const filtered = selectedClass === "all" ? cours : cours.filter(c => c.classe === selectedClass);
     const totalCourses = filtered.length;
-    const totalStudents = filtered.reduce((sum, c) => sum + (c.students || 0), 0);
     const avgProgress = filtered.length ? Math.round(filtered.reduce((sum, c) => sum + calculerProgression(c), 0) / filtered.length) : 0;
     const totalHours = filtered.reduce((sum, c) => sum + (c.hoursPerWeek || 0), 0);
-    return { totalCourses, totalStudents, avgProgress, totalHours };
+    return { totalCourses, avgProgress, totalHours };
   }, [cours, selectedClass]);
 
   const saveCours = (formData: any) => {
@@ -137,7 +137,7 @@ export default function CoursesPage() {
         duree: 2,
         progress: 0,
         status: formData.status,
-        students: formData.students,
+        students: 0,
         coefficient: formData.coefficient,
         hoursPerWeek: formData.coefficient || 2,
         image: imageUrl,
@@ -183,8 +183,11 @@ export default function CoursesPage() {
           <div className="absolute bottom-3 left-4"><h3 className="text-white font-bold text-lg">{course.matiere}</h3><p className="text-white/80 text-xs">{course.professeur}</p></div>
         </div>
         <div className="p-4 space-y-3">
-          <div className="flex justify-between text-xs"><div className="flex items-center gap-2"><Clock size={14} />{course.jour} {course.heure}</div><div className="flex items-center gap-2"><MapPin size={14} />{course.salle}</div></div>
-          <div className="flex justify-between"><div className="flex items-center gap-2"><Users size={14} /><span>{course.students || 0} él.</span></div><span className={`text-[10px] font-bold px-2 py-1 rounded-full ${getStatusColor(course.status)}`}>{course.status}</span></div>
+          <div className="flex justify-between text-xs">
+            <div className="flex items-center gap-2"><Clock size={14} /><span>{course.jour} {course.heure}</span></div>
+            <div className="flex items-center gap-2"><Users size={14} /><span>{course.students || 0} él.</span></div>
+            <span className={`text-[10px] font-bold px-2 py-1 rounded-full ${getStatusColor(course.status)}`}>{course.status}</span>
+          </div>
           <div><div className="flex justify-between text-[10px] text-slate-400 mb-1"><span>Progression</span><span>{progression}%</span></div><div className="w-full bg-slate-100 rounded-full h-2"><div className="bg-blue-500 h-2 rounded-full" style={{ width: `${progression}%` }}></div></div></div>
           <div className="flex gap-2 mt-2">
             <button onClick={() => router.push(`/cours/${course.id}`)} className="flex-1 py-2 border border-slate-200 rounded-xl text-sm font-semibold flex items-center justify-center gap-1"><Eye size={14}/> Détails</button>
@@ -204,8 +207,8 @@ export default function CoursesPage() {
         <td className="px-4 py-3 font-semibold truncate">{course.matiere}</td>
         <td className="px-4 py-3 truncate">{course.classe}</td>
         <td className="px-4 py-3 truncate">{course.professeur}</td>
-        <td className="px-4 py-3 text-sm truncate">{course.jour} {course.heure}</td>
         <td className="px-4 py-3 truncate">{course.salle}</td>
+        <td className="px-4 py-3 truncate text-xs">{course.jour} {course.heure}</td>
         <td className="px-4 py-3"><div className="flex items-center gap-2"><span className="text-xs whitespace-nowrap">{progression}%</span><div className="w-16 bg-slate-100 rounded-full h-1.5"><div className="bg-blue-500 h-1.5 rounded-full" style={{width: `${progression}%`}}></div></div></div></td>
         <td className="px-4 py-3"><span className={`text-[10px] font-bold px-2 py-1 rounded-full whitespace-nowrap ${getStatusColor(course.status)}`}>{course.status}</span></td>
         <td className="px-4 py-3" onClick={(e) => e.stopPropagation()}>
@@ -227,9 +230,8 @@ export default function CoursesPage() {
       </div>
 
       {/* STATS */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
         <div className="bg-white rounded-2xl border p-5"><p className="text-slate-400 text-xs">Cours actifs</p><p className="text-2xl font-bold">{stats.totalCourses}</p><p className="text-[11px] text-emerald-600">+2 cette semaine</p></div>
-        <div className="bg-white rounded-2xl border p-5"><p className="text-slate-400 text-xs">Élèves concernés</p><p className="text-2xl font-bold">{stats.totalStudents}</p><p className="text-[11px] text-slate-400">dans les classes sélectionnées</p></div>
         <div className="bg-white rounded-2xl border p-5"><p className="text-slate-400 text-xs">Progression moyenne</p><p className="text-2xl font-bold">{stats.avgProgress}%</p><div className="w-full bg-slate-100 rounded-full h-1.5 mt-2"><div className="bg-emerald-500 h-1.5 rounded-full" style={{width: `${stats.avgProgress}%`}}></div></div></div>
         <div className="bg-white rounded-2xl border p-5"><p className="text-slate-400 text-xs">Heures / semaine</p><p className="text-2xl font-bold">{stats.totalHours}h</p><p className="text-[11px] text-blue-600">volume horaire total</p></div>
       </div>
@@ -253,7 +255,6 @@ export default function CoursesPage() {
       {viewMode === "grid" ? (
         <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">{filteredCourses.map(course => <CourseCard key={course.id} course={course} />)}</div>
       ) : (
-        /* VUE TABLEAU - ALIGNEMENT PARFAIT AVEC COLGROUP */
         <div className="bg-white rounded-2xl border overflow-x-auto shadow-sm">
           <table className="w-full text-sm table-fixed">
             <colgroup>
@@ -261,8 +262,8 @@ export default function CoursesPage() {
               <col className="w-32" />
               <col className="w-20" />
               <col className="w-32" />
-              <col className="w-36" />
               <col className="w-20" />
+              <col className="w-32" />
               <col className="w-28" />
               <col className="w-24" />
               <col className="w-24" />
@@ -273,8 +274,8 @@ export default function CoursesPage() {
                 <th className="px-4 py-3 text-left">Cours</th>
                 <th className="px-4 py-3 text-left">Classe</th>
                 <th className="px-4 py-3 text-left">Enseignant</th>
-                <th className="px-4 py-3 text-left">Horaire</th>
                 <th className="px-4 py-3 text-left">Salle</th>
+                <th className="px-4 py-3 text-left">Horaire</th>
                 <th className="px-4 py-3 text-left">Progrès</th>
                 <th className="px-4 py-3 text-left">Statut</th>
                 <th className="px-4 py-3 text-left">Actions</th>

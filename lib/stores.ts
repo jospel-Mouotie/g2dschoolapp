@@ -39,6 +39,7 @@ export interface Chapitre {
   duree?: number;
 }
 
+// lib/stores.ts - Ajoutez ces champs à l'interface Eleve
 export interface Eleve {
   id: number;
   nom: string;
@@ -53,8 +54,21 @@ export interface Eleve {
   selected?: boolean;
   moyenne?: string;
   noteColor?: string;
+  // Nouveaux champs pour les parents
+  parentNom?: string;
+  parentTelephone?: string;
+  parentEmail?: string;
+  parentProfession?: string;
+  adresse?: string;
+  dateInscription?: string;
+  lieuNaissance?: string;
+  nationalite?: string;
+  sexe?: "M" | "F";
+  ancienEtablissement?: string;
+  redoublant?: boolean;
+  situationFamiliale?: string;
+  nomComplet?: string;
 }
-
 export interface Module {
   id: string;
   titre: string;
@@ -294,14 +308,30 @@ export function useSallesStore() {
   ];
   return useIndexedDB("salles", initialSalles);
 }
-
 export function useMatieresStore() {
-  const initialMatieres: Matiere[] = [];
+  const initialMatieres: Matiere[] = [
+    { id: "1", nom: "MATHÉMATIQUES", coefficient: 4, description: "Mathématiques générales" },
+    { id: "2", nom: "FRANÇAIS", coefficient: 3, description: "Langue française" },
+    { id: "3", nom: "ANGLAIS", coefficient: 2, description: "Langue anglaise" },
+    { id: "4", nom: "HISTOIRE-GÉOGRAPHIE", coefficient: 3, description: "Histoire et Géographie" },
+    { id: "5", nom: "PHYSIQUE-CHIMIE", coefficient: 5, description: "Sciences physiques" },
+    { id: "6", nom: "INFORMATIQUE", coefficient: 2, description: "Informatique" },
+    { id: "7", nom: "EPS", coefficient: 2, description: "Éducation physique" },
+    { id: "8", nom: "ÉDUCATION CIVIQUE", coefficient: 1, description: "Éducation civique" },
+  ];
   return useIndexedDB("matieres", initialMatieres);
 }
 
 export function useFraisStore() {
-  const initialFrais: FraisNiveau[] = [];
+  const initialFrais: FraisNiveau[] = [
+    { id: "1", niveau: "6ème", montant: 150000, description: "Frais de scolarité annuel" },
+    { id: "2", niveau: "5ème", montant: 150000, description: "Frais de scolarité annuel" },
+    { id: "3", niveau: "4ème", montant: 160000, description: "Frais de scolarité annuel" },
+    { id: "4", niveau: "3ème", montant: 160000, description: "Frais de scolarité annuel" },
+    { id: "5", niveau: "Seconde", montant: 170000, description: "Frais de scolarité annuel" },
+    { id: "6", niveau: "Première", montant: 170000, description: "Frais de scolarité annuel" },
+    { id: "7", niveau: "Terminale", montant: 180000, description: "Frais de scolarité annuel" },
+  ];
   return useIndexedDB("frais", initialFrais);
 }
 
@@ -374,4 +404,12 @@ export function usePausesStore() {
     { id: "1", heureDebut: "12:00", heureFin: "14:00", description: "Pause déjeuner" },
   ];
   return useIndexedDB("pauses", initialPauses);
+}
+
+
+export interface Niveau {
+  id: string;
+  nom: string;        // ex: "6ème", "Form 1", "Seconde pro"
+  description?: string;
+  ordre: number;      // pour l'ordre d'affichage
 }

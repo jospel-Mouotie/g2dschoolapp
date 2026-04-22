@@ -1,4 +1,5 @@
-// app/planning/page.tsx
+// app/planning/page.tsx - Version corrigée avec vérifications
+
 "use client";
 import { useState, useMemo, useEffect } from "react";
 import {
@@ -6,9 +7,9 @@ import {
   ChevronLeft, ChevronRight, Download, Printer, Search,
   X, BookOpen, UserCheck, Home, Eye, Coffee
 } from "lucide-react";
-import { useCoursStore, useSallesStore, useEnseignantsStore, useEtablissementStore, useMatieresStore, useClassesStore, usePausesStore } from "@/lib/stores";
+import { useCoursStore, useSallesStore, useEnseignantsStore, useEtablissementStore, useMatieresStore, useClassesStore, usePausesStore, Cours as StoreCours } from "@/lib/stores";
 
-interface Cours {
+interface PlanningCours {
   id: string;
   matiere: string;
   professeur: string;
@@ -42,15 +43,63 @@ function isHeureDansPause(heure: string, pauses: any[]): boolean {
   return false;
 }
 
-const defaultCours: Cours[] = [
-  { id: "1", matiere: "Maths", professeur: "M. Kanga", salle: "12", classe: "6A", jour: "Lundi", heureDebut: "08:00", heureFin: "10:00", duree: 2 },
-  { id: "2", matiere: "Français", professeur: "Mme Ngo", salle: "8", classe: "6A", jour: "Lundi", heureDebut: "10:00", heureFin: "12:00", duree: 2 },
-  { id: "3", matiere: "Anglais", professeur: "Mr Smith", salle: "Labo2", classe: "6A", jour: "Mardi", heureDebut: "08:00", heureFin: "09:30", duree: 1.5 },
-  { id: "4", matiere: "Histoire", professeur: "M. Fofana", salle: "5", classe: "6A", jour: "Mercredi", heureDebut: "10:00", heureFin: "12:00", duree: 2 },
-  { id: "5", matiere: "Physique", professeur: "Mme Djou", salle: "Labo1", classe: "6A", jour: "Jeudi", heureDebut: "08:00", heureFin: "11:00", duree: 3 },
-  { id: "6", matiere: "Info", professeur: "M. Kamga", salle: "Info", classe: "6A", jour: "Vendredi", heureDebut: "14:00", heureFin: "16:00", duree: 2 },
-  { id: "7", matiere: "Sport", professeur: "M. Eto'o", salle: "Terrain", classe: "6A", jour: "Samedi", heureDebut: "08:00", heureFin: "10:00", duree: 2 },
+// Données par défaut converties au format du store
+const defaultCoursStore: StoreCours[] = [
+  { id: "1", matiere: "Maths", professeur: "M. Kanga", salle: "12", classe: "6A", jour: "Lundi", heure: "08:00-10:00", duree: 2, progress: 0, status: "En cours", students: 32, coefficient: 4, hoursPerWeek: 4, image: "", modules: [] },
+  { id: "2", matiere: "Français", professeur: "Mme Ngo", salle: "8", classe: "6A", jour: "Lundi", heure: "10:00-12:00", duree: 2, progress: 0, status: "En cours", students: 32, coefficient: 3, hoursPerWeek: 3, image: "", modules: [] },
+  { id: "3", matiere: "Anglais", professeur: "Mr Smith", salle: "Labo2", classe: "6A", jour: "Mardi", heure: "08:00-09:30", duree: 1.5, progress: 0, status: "En cours", students: 32, coefficient: 2, hoursPerWeek: 2, image: "", modules: [] },
+  { id: "4", matiere: "Histoire", professeur: "M. Fofana", salle: "5", classe: "6A", jour: "Mercredi", heure: "10:00-12:00", duree: 2, progress: 0, status: "En cours", students: 32, coefficient: 3, hoursPerWeek: 3, image: "", modules: [] },
+  { id: "5", matiere: "Physique", professeur: "Mme Djou", salle: "Labo1", classe: "6A", jour: "Jeudi", heure: "08:00-11:00", duree: 3, progress: 0, status: "En cours", students: 32, coefficient: 5, hoursPerWeek: 5, image: "", modules: [] },
+  { id: "6", matiere: "Info", professeur: "M. Kamga", salle: "Info", classe: "6A", jour: "Vendredi", heure: "14:00-16:00", duree: 2, progress: 0, status: "En cours", students: 32, coefficient: 2, hoursPerWeek: 2, image: "", modules: [] },
+  { id: "7", matiere: "Sport", professeur: "M. Eto'o", salle: "Terrain", classe: "6A", jour: "Samedi", heure: "08:00-10:00", duree: 2, progress: 0, status: "En cours", students: 32, coefficient: 2, hoursPerWeek: 2, image: "", modules: [] },
 ];
+
+// Fonction pour convertir un cours du store en format planning avec vérification
+function storeToPlanningCours(storeCours: StoreCours): PlanningCours | null {
+  if (!storeCours || !storeCours.heure) {
+    console.warn("Cours invalide ou sans heure:", storeCours);
+    return null;
+  }
+  
+  const [heureDebut, heureFin] = storeCours.heure.split("-");
+  if (!heureDebut || !heureFin) {
+    console.warn("Format d'heure invalide:", storeCours.heure);
+    return null;
+  }
+  
+  return {
+    id: storeCours.id,
+    matiere: storeCours.matiere || "Sans matière",
+    professeur: storeCours.professeur || "Non attribué",
+    salle: storeCours.salle || "Non définie",
+    classe: storeCours.classe || "Non définie",
+    jour: storeCours.jour || "Lundi",
+    heureDebut: heureDebut,
+    heureFin: heureFin,
+    duree: storeCours.duree || calculerDuree(heureDebut, heureFin),
+  };
+}
+
+// Fonction pour convertir un planning cours en format store
+function planningToStoreCours(planningCours: PlanningCours): StoreCours {
+  return {
+    id: planningCours.id,
+    matiere: planningCours.matiere,
+    professeur: planningCours.professeur,
+    salle: planningCours.salle,
+    classe: planningCours.classe,
+    jour: planningCours.jour,
+    heure: `${planningCours.heureDebut}-${planningCours.heureFin}`,
+    duree: planningCours.duree,
+    progress: 0,
+    status: "En cours",
+    students: 0,
+    coefficient: 1,
+    hoursPerWeek: planningCours.duree,
+    image: "",
+    modules: [],
+  };
+}
 
 const currentUser = { role: "admin", name: "M. Kanga", classe: "6A" };
 
@@ -70,7 +119,11 @@ function CoursModal({ cours, onSave, onClose, viewType, selectedClasse, selected
     return enseignants.filter((e: any) => e.matieres?.includes(form.matiere) || e.enseignements?.some((ens: any) => ens.matiere === form.matiere));
   }, [enseignants, form.matiere]);
 
-  const handleSubmit = (e: React.FormEvent) => { e.preventDefault(); const duree = calculerDuree(form.heureDebut, form.heureFin); onSave({ ...form, id: cours?.id || "", duree }); };
+  const handleSubmit = (e: React.FormEvent) => { 
+    e.preventDefault(); 
+    const duree = calculerDuree(form.heureDebut, form.heureFin); 
+    onSave({ ...form, id: cours?.id || "", duree }); 
+  };
 
   return (
     <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
@@ -81,8 +134,11 @@ function CoursModal({ cours, onSave, onClose, viewType, selectedClasse, selected
           <div><label className="text-xs font-medium">Professeur</label><select required value={form.professeur} onChange={e => setForm({...form, professeur: e.target.value})} className="w-full border rounded-lg p-1.5 text-sm"><option value="">Choisir</option>{enseignantsFiltres.map((e: any) => <option key={e.id} value={e.name}>{e.name}</option>)}</select></div>
           <div><label className="text-xs font-medium">Salle</label><select required value={form.salle} onChange={e => setForm({...form, salle: e.target.value})} className="w-full border rounded-lg p-1.5 text-sm"><option value="">Choisir</option>{salles.map((s: any) => <option key={s.id} value={s.nom}>{s.nom}</option>)}</select></div>
           <div><label className="text-xs font-medium">Classe</label><select required value={form.classe} onChange={e => setForm({...form, classe: e.target.value})} className="w-full border rounded-lg p-1.5 text-sm"><option value="">Choisir</option>{classes.map((c: any) => <option key={c.id} value={c.nom}>{c.nom}</option>)}</select></div>
-          <div className="grid grid-cols-2 gap-2"><div><label className="text-xs font-medium">Jour</label><select value={form.jour} className="w-full border rounded-lg p-1.5 text-sm">{jours.map(j => <option key={j}>{j}</option>)}</select></div></div>
-          <div className="grid grid-cols-2 gap-2"><div><label className="text-xs font-medium">Début</label><input type="time" required value={form.heureDebut} onChange={e => setForm({...form, heureDebut: e.target.value})} className="w-full border rounded-lg p-1.5 text-sm" /></div><div><label className="text-xs font-medium">Fin</label><input type="time" required value={form.heureFin} onChange={e => setForm({...form, heureFin: e.target.value})} className="w-full border rounded-lg p-1.5 text-sm" /></div></div>
+          <div><label className="text-xs font-medium">Jour</label><select value={form.jour} onChange={e => setForm({...form, jour: e.target.value})} className="w-full border rounded-lg p-1.5 text-sm">{jours.map(j => <option key={j}>{j}</option>)}</select></div>
+          <div className="grid grid-cols-2 gap-2">
+            <div><label className="text-xs font-medium">Début</label><input type="time" required value={form.heureDebut} onChange={e => setForm({...form, heureDebut: e.target.value})} className="w-full border rounded-lg p-1.5 text-sm" /></div>
+            <div><label className="text-xs font-medium">Fin</label><input type="time" required value={form.heureFin} onChange={e => setForm({...form, heureFin: e.target.value})} className="w-full border rounded-lg p-1.5 text-sm" /></div>
+          </div>
           <div className="flex gap-2 pt-2"><button type="submit" className="flex-1 bg-blue-600 text-white py-1.5 rounded-lg text-sm font-semibold">Enregistrer</button><button type="button" onClick={onClose} className="flex-1 border py-1.5 rounded-lg text-sm">Annuler</button></div>
         </form>
       </div>
@@ -90,12 +146,20 @@ function CoursModal({ cours, onSave, onClose, viewType, selectedClasse, selected
   );
 }
 
-function DetailModal({ cours, onClose }: { cours: Cours; onClose: () => void }) {
+function DetailModal({ cours, onClose }: { cours: PlanningCours; onClose: () => void }) {
   return (
     <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
       <div className="bg-white rounded-2xl max-w-sm w-full p-5 shadow-2xl">
         <div className="flex justify-between items-center mb-3"><h3 className="text-lg font-bold">Détails</h3><button onClick={onClose}><X size={18}/></button></div>
-        <div className="space-y-2 text-sm"><div className="flex justify-between"><span className="font-medium">Matière :</span><span>{cours.matiere}</span></div><div className="flex justify-between"><span className="font-medium">Professeur :</span><span>{cours.professeur}</span></div><div className="flex justify-between"><span className="font-medium">Salle :</span><span>{cours.salle}</span></div><div className="flex justify-between"><span className="font-medium">Classe :</span><span>{cours.classe}</span></div><div className="flex justify-between"><span className="font-medium">Jour :</span><span>{cours.jour}</span></div><div className="flex justify-between"><span className="font-medium">Horaire :</span><span>{formaterHeure(cours.heureDebut)} - {formaterHeure(cours.heureFin)}</span></div><div className="flex justify-between"><span className="font-medium">Durée :</span><span>{cours.duree}h</span></div></div>
+        <div className="space-y-2 text-sm">
+          <div className="flex justify-between"><span className="font-medium">Matière :</span><span>{cours.matiere}</span></div>
+          <div className="flex justify-between"><span className="font-medium">Professeur :</span><span>{cours.professeur}</span></div>
+          <div className="flex justify-between"><span className="font-medium">Salle :</span><span>{cours.salle}</span></div>
+          <div className="flex justify-between"><span className="font-medium">Classe :</span><span>{cours.classe}</span></div>
+          <div className="flex justify-between"><span className="font-medium">Jour :</span><span>{cours.jour}</span></div>
+          <div className="flex justify-between"><span className="font-medium">Horaire :</span><span>{formaterHeure(cours.heureDebut)} - {formaterHeure(cours.heureFin)}</span></div>
+          <div className="flex justify-between"><span className="font-medium">Durée :</span><span>{cours.duree}h</span></div>
+        </div>
         <div className="mt-4 flex justify-end"><button onClick={onClose} className="px-3 py-1.5 bg-blue-600 text-white rounded-lg text-sm">Fermer</button></div>
       </div>
     </div>
@@ -103,7 +167,7 @@ function DetailModal({ cours, onClose }: { cours: Cours; onClose: () => void }) 
 }
 
 export default function PlanningPage() {
-  const [cours, setCours] = useCoursStore();
+  const [storeCours, setStoreCours] = useCoursStore();
   const [salles] = useSallesStore();
   const [enseignants] = useEnseignantsStore();
   const [matieres] = useMatieresStore();
@@ -115,9 +179,17 @@ export default function PlanningPage() {
   const [selectedTeacher, setSelectedTeacher] = useState("");
   const [showModal, setShowModal] = useState(false);
   const [showDetailModal, setShowDetailModal] = useState(false);
-  const [selectedCours, setSelectedCours] = useState<Cours | null>(null);
-  const [editingCours, setEditingCours] = useState<Cours | null>(null);
+  const [selectedCours, setSelectedCours] = useState<PlanningCours | null>(null);
+  const [editingCours, setEditingCours] = useState<PlanningCours | null>(null);
   const [search, setSearch] = useState("");
+
+  // Convertir les cours du store en format planning (filtrer les null)
+  const planningCours = useMemo(() => {
+    if (!storeCours || storeCours.length === 0) return [];
+    return storeCours
+      .map(storeToPlanningCours)
+      .filter((c): c is PlanningCours => c !== null);
+  }, [storeCours]);
 
   useEffect(() => {
     if (classes.length > 0 && !selectedClasse) setSelectedClasse(classes[0]?.nom || "");
@@ -125,31 +197,49 @@ export default function PlanningPage() {
   }, [classes, enseignants]);
 
   useEffect(() => {
-    if (cours.length === 0 && defaultCours.length > 0) setCours(defaultCours);
-  }, [cours, setCours]);
+    if (storeCours.length === 0 && defaultCoursStore.length > 0) setStoreCours(defaultCoursStore);
+  }, [storeCours, setStoreCours]);
 
   const classesDispo = useMemo(() => classes.map(c => c.nom).sort(), [classes]);
   const enseignantsList = useMemo(() => enseignants.map(e => e.name).sort(), [enseignants]);
 
   const toutesHeures = useMemo(() => {
     const heures = new Set<string>();
-    cours.forEach(c => { heures.add(c.heureDebut); heures.add(c.heureFin); });
-    pauses.forEach(p => { heures.add(p.heureDebut); heures.add(p.heureFin); });
+    planningCours.forEach(c => { 
+      if (c.heureDebut) heures.add(c.heureDebut); 
+      if (c.heureFin) heures.add(c.heureFin); 
+    });
+    pauses.forEach(p => { 
+      if (p.heureDebut) heures.add(p.heureDebut); 
+      if (p.heureFin) heures.add(p.heureFin); 
+    });
     return Array.from(heures).sort();
-  }, [cours, pauses]);
+  }, [planningCours, pauses]);
 
   const filteredCours = useMemo(() => {
-    let filtered = cours;
+    let filtered = planningCours;
     if (viewType === "classe" && selectedClasse) filtered = filtered.filter(c => c.classe === selectedClasse);
     else if (viewType === "teacher" && selectedTeacher) filtered = filtered.filter(c => c.professeur === selectedTeacher);
     if (search) filtered = filtered.filter(c => c.matiere.toLowerCase().includes(search.toLowerCase()) || c.professeur.toLowerCase().includes(search.toLowerCase()));
     return filtered;
-  }, [cours, viewType, selectedClasse, selectedTeacher, search]);
+  }, [planningCours, viewType, selectedClasse, selectedTeacher, search]);
 
   const getCoursForHour = (jour: string, heure: string) => filteredCours.filter(c => c.jour === jour && heure >= c.heureDebut && heure < c.heureFin);
 
-  const deleteCours = (id: string) => { if (confirm("Supprimer ?")) setCours(cours.filter(c => c.id !== id)); };
-  const saveCours = (newCours: Cours) => { if (editingCours) setCours(cours.map(c => c.id === editingCours.id ? newCours : c)); else setCours([...cours, { ...newCours, id: Date.now().toString() }]); setShowModal(false); setEditingCours(null); };
+  const deleteCours = (id: string) => { 
+    if (confirm("Supprimer ce cours ?")) setStoreCours(storeCours.filter(c => c.id !== id)); 
+  };
+  
+  const saveCours = (newPlanningCours: PlanningCours) => { 
+    const newStoreCours = planningToStoreCours(newPlanningCours);
+    if (editingCours) {
+      setStoreCours(storeCours.map(c => c.id === editingCours.id ? newStoreCours : c));
+    } else {
+      setStoreCours([...storeCours, { ...newStoreCours, id: Date.now().toString() }]);
+    }
+    setShowModal(false); 
+    setEditingCours(null); 
+  };
 
   const handlePrint = () => {
     const printContent = document.getElementById("planning-table")?.cloneNode(true) as HTMLElement;
@@ -245,7 +335,7 @@ export default function PlanningPage() {
             <tr className="bg-slate-50 border-b">
               <th className="p-1.5 text-left font-bold w-16">Horaire</th>
               {jours.map(jour => <th key={jour} className="p-1.5 text-left font-bold">{jour.slice(0,3)}</th>)}
-            </tr>
+             </tr>
           </thead>
           <tbody>
             {toutesHeures.map(heure => {

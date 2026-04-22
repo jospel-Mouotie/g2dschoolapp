@@ -1,27 +1,15 @@
-// app/communication/page.tsx
+// app/chat/page.tsx
 "use client";
 import { useState, useRef, useEffect } from "react";
 import {
-  MessageSquare, Send, Users, Bell, Mail, Plus, Search, 
-  Paperclip, Smile, MoreVertical, ChevronDown, X,
-  Megaphone, MessageCircle, CheckCircle, Clock, 
-  School, UserCheck, Calendar, Filter, Home, User
+  MessageSquare, Send, Users, Bell, Search, 
+  Paperclip, MoreVertical, X,
+  Megaphone, MessageCircle, CheckCircle, 
+  Filter, Home, User, Trash2, Reply
 } from "lucide-react";
-import { useLocalStorage } from "@/lib/stores"; // ou useIndexedDB
+import { useMessagesStore, Message } from "@/lib/stores";
 
 // Types
-interface Message {
-  id: number;
-  expediteur: string;
-  expediteurRole: "admin" | "teacher" | "student";
-  expediteurAvatar: string;
-  destinataire: string; // "all" pour annonces générales, "classe:6A" pour classe, "user:ID" pour privé
-  contenu: string;
-  date: string;
-  pieceJointe?: string;
-  lu: boolean;
-}
-
 interface Classe {
   id: string;
   nom: string;
@@ -48,57 +36,95 @@ const classes: Classe[] = [
   { id: "Tle", nom: "Terminale", nbEleves: 28, profPrincipal: "Mme Ngo" },
 ];
 
-// Simuler des contacts (enseignants et élèves) pour les conversations privées
+// Contacts pour les conversations privées
 const contactsInitiaux: Contact[] = [
   { id: "admin", nom: "Direction", role: "admin", avatar: "https://ui-avatars.com/api/?name=Direction&background=3b82f6&color=fff" },
   { id: "teacher1", nom: "M. Kanga", role: "teacher", avatar: "https://ui-avatars.com/api/?name=Kanga&background=10b981&color=fff" },
   { id: "teacher2", nom: "Mme Ngo", role: "teacher", avatar: "https://ui-avatars.com/api/?name=Ngo&background=10b981&color=fff" },
+  { id: "teacher3", nom: "Mr Smith", role: "teacher", avatar: "https://ui-avatars.com/api/?name=Smith&background=10b981&color=fff" },
   { id: "student1", nom: "Jean Mbélé", role: "student", avatar: "https://ui-avatars.com/api/?name=Jean+M&background=8b5cf6&color=fff" },
   { id: "student2", nom: "Élise Nend", role: "student", avatar: "https://ui-avatars.com/api/?name=Elise&background=8b5cf6&color=fff" },
+  { id: "student3", nom: "Sarah Ngono", role: "student", avatar: "https://ui-avatars.com/api/?name=Sarah&background=8b5cf6&color=fff" },
+  { id: "student4", nom: "Michel Essomba", role: "student", avatar: "https://ui-avatars.com/api/?name=Michel&background=8b5cf6&color=fff" },
 ];
 
-// Simuler l'utilisateur connecté
+// Utilisateur connecté (simulé - à remplacer par votre auth)
 const currentUser = {
   id: "teacher1",
-  role: "teacher", // "admin", "teacher", "student"
+  role: "teacher",
   name: "M. Kanga",
   avatar: "https://ui-avatars.com/api/?name=Kanga&background=10b981&color=fff",
   classe: "6A"
 };
 
-// Messages initiaux (incluant quelques messages privés)
+// Messages initiaux préremplis - conforme à l'interface Message du store
 const initialMessages: Message[] = [
-  { id: 1, expediteur: "Direction", expediteurRole: "admin", expediteurAvatar: "https://ui-avatars.com/api/?name=Direction&background=3b82f6&color=fff", destinataire: "all", contenu: "📢 Réunion parents-professeurs le 15 avril à 15h en salle polyvalente.", date: "2025-04-01T08:00:00", lu: false },
-  { id: 2, expediteur: "M. Kanga", expediteurRole: "teacher", expediteurAvatar: "https://ui-avatars.com/api/?name=Kanga&background=10b981&color=fff", destinataire: "classe:6A", contenu: "Devoir maison à rendre pour lundi. Chapitre 3.", date: "2025-04-02T10:30:00", lu: false },
-  { id: 3, expediteur: "Jean Mbélé", expediteurRole: "student", expediteurAvatar: "https://ui-avatars.com/api/?name=Jean+M&background=8b5cf6&color=fff", destinataire: "classe:6A", contenu: "Monsieur, est-ce qu'on peut utiliser la calculatrice ?", date: "2025-04-02T14:20:00", lu: false },
-  { id: 4, expediteur: "M. Kanga", expediteurRole: "teacher", expediteurAvatar: "https://ui-avatars.com/api/?name=Kanga&background=10b981&color=fff", destinataire: "classe:6A", contenu: "Oui, la calculatrice est autorisée pour ce devoir.", date: "2025-04-02T15:00:00", lu: false },
-  { id: 5, expediteur: "Direction", expediteurRole: "admin", expediteurAvatar: "https://ui-avatars.com/api/?name=Direction&background=3b82f6&color=fff", destinataire: "user:teacher1", contenu: "Bonjour M. Kanga, pouvez-vous me contacter ?", date: "2025-04-03T09:00:00", lu: false },
-  { id: 6, expediteur: "M. Kanga", expediteurRole: "teacher", expediteurAvatar: "https://ui-avatars.com/api/?name=Kanga&background=10b981&color=fff", destinataire: "user:admin", contenu: "Bien sûr, je vous appelle dans l'après-midi.", date: "2025-04-03T10:00:00", lu: false },
+  // Annonces générales (Direction)
+  { id: 1, expediteur: "Direction", expediteurRole: "admin", expediteurAvatar: "https://ui-avatars.com/api/?name=Direction&background=3b82f6&color=fff", destinataireClasse: "all", contenu: "📢 Réunion parents-professeurs le 15 avril à 15h en salle polyvalente.", date: "2025-04-01T08:00:00", lu: false },
+  { id: 2, expediteur: "Direction", expediteurRole: "admin", expediteurAvatar: "https://ui-avatars.com/api/?name=Direction&background=3b82f6&color=fff", destinataireClasse: "all", contenu: "📢 Fermeture exceptionnelle le 20 avril pour cause de travaux.", date: "2025-04-03T11:00:00", lu: false },
+  { id: 3, expediteur: "Direction", expediteurRole: "admin", expediteurAvatar: "https://ui-avatars.com/api/?name=Direction&background=3b82f6&color=fff", destinataireClasse: "all", contenu: "📢 Nouveau règlement intérieur disponible en ligne.", date: "2025-04-05T09:00:00", lu: false },
+  
+  // Messages dans la classe 6A
+  { id: 4, expediteur: "M. Kanga", expediteurRole: "teacher", expediteurAvatar: "https://ui-avatars.com/api/?name=Kanga&background=10b981&color=fff", destinataireClasse: "6A", contenu: "Devoir maison à rendre pour lundi. Chapitre 3 sur les fonctions.", date: "2025-04-02T10:30:00", lu: false },
+  { id: 5, expediteur: "Jean Mbélé", expediteurRole: "student", expediteurAvatar: "https://ui-avatars.com/api/?name=Jean+M&background=8b5cf6&color=fff", destinataireClasse: "6A", contenu: "Monsieur, est-ce qu'on peut utiliser la calculatrice ?", date: "2025-04-02T14:20:00", lu: false },
+  { id: 6, expediteur: "M. Kanga", expediteurRole: "teacher", expediteurAvatar: "https://ui-avatars.com/api/?name=Kanga&background=10b981&color=fff", destinataireClasse: "6A", contenu: "Oui, la calculatrice est autorisée pour ce devoir.", date: "2025-04-02T15:00:00", lu: false },
+  { id: 7, expediteur: "Élise Nend", expediteurRole: "student", expediteurAvatar: "https://ui-avatars.com/api/?name=Elise&background=8b5cf6&color=fff", destinataireClasse: "6A", contenu: "Monsieur, est-ce que le devoir est à rendre par écrit ou en ligne ?", date: "2025-04-03T09:00:00", lu: false },
+  { id: 8, expediteur: "M. Kanga", expediteurRole: "teacher", expediteurAvatar: "https://ui-avatars.com/api/?name=Kanga&background=10b981&color=fff", destinataireClasse: "6A", contenu: "Par écrit sur feuille, à rendre en main propre.", date: "2025-04-03T10:15:00", lu: false },
+  { id: 9, expediteur: "Dider Fongang", expediteurRole: "student", expediteurAvatar: "https://ui-avatars.com/api/?name=Dider&background=8b5cf6&color=fff", destinataireClasse: "6A", contenu: "Monsieur, est-ce qu'il y aura une correction en classe ?", date: "2025-04-04T08:30:00", lu: false },
+  { id: 10, expediteur: "M. Kanga", expediteurRole: "teacher", expediteurAvatar: "https://ui-avatars.com/api/?name=Kanga&background=10b981&color=fff", destinataireClasse: "6A", contenu: "Oui, on corrigera ensemble mercredi prochain.", date: "2025-04-04T09:00:00", lu: false },
+  
+  // Messages dans la classe 5B
+  { id: 11, expediteur: "Mme Ngo", expediteurRole: "teacher", expediteurAvatar: "https://ui-avatars.com/api/?name=Ngo&background=10b981&color=fff", destinataireClasse: "5B", contenu: "Correction du contrôle jeudi en classe. Préparez-vous !", date: "2025-04-03T09:15:00", lu: false },
+  { id: 12, expediteur: "Sarah Ngono", expediteurRole: "student", expediteurAvatar: "https://ui-avatars.com/api/?name=Sarah&background=8b5cf6&color=fff", destinataireClasse: "5B", contenu: "Madame, pour le contrôle, on révise jusqu'à quelle page ?", date: "2025-04-04T09:00:00", lu: false },
+  { id: 13, expediteur: "Mme Ngo", expediteurRole: "teacher", expediteurAvatar: "https://ui-avatars.com/api/?name=Ngo&background=10b981&color=fff", destinataireClasse: "5B", contenu: "Jusqu'à la page 42, bon courage !", date: "2025-04-04T10:15:00", lu: false },
+  { id: 14, expediteur: "Michel Essomba", expediteurRole: "student", expediteurAvatar: "https://ui-avatars.com/api/?name=Michel&background=8b5cf6&color=fff", destinataireClasse: "5B", contenu: "Merci madame !", date: "2025-04-04T10:30:00", lu: false },
+  { id: 15, expediteur: "Mme Ngo", expediteurRole: "teacher", expediteurAvatar: "https://ui-avatars.com/api/?name=Ngo&background=10b981&color=fff", destinataireClasse: "5B", contenu: "Les notes du dernier devoir sont disponibles.", date: "2025-04-06T14:00:00", lu: false },
+  
+  // Messages privés (on utilise destinataireClasse pour stocker l'ID du destinataire)
+  { id: 16, expediteur: "Direction", expediteurRole: "admin", expediteurAvatar: "https://ui-avatars.com/api/?name=Direction&background=3b82f6&color=fff", destinataireClasse: "user:teacher1", contenu: "Bonjour M. Kanga, pouvez-vous me contacter concernant le conseil de classe ?", date: "2025-04-03T09:00:00", lu: false },
+  { id: 17, expediteur: "M. Kanga", expediteurRole: "teacher", expediteurAvatar: "https://ui-avatars.com/api/?name=Kanga&background=10b981&color=fff", destinataireClasse: "user:admin", contenu: "Bien sûr, je vous appelle dans l'après-midi.", date: "2025-04-03T10:00:00", lu: false },
+  { id: 18, expediteur: "Mme Ngo", expediteurRole: "teacher", expediteurAvatar: "https://ui-avatars.com/api/?name=Ngo&background=10b981&color=fff", destinataireClasse: "user:teacher1", contenu: "Bonjour collègue, avez-vous reçu le programme du trimestre ?", date: "2025-04-05T08:00:00", lu: false },
+  { id: 19, expediteur: "M. Kanga", expediteurRole: "teacher", expediteurAvatar: "https://ui-avatars.com/api/?name=Kanga&background=10b981&color=fff", destinataireClasse: "user:teacher2", contenu: "Oui, je l'ai reçu. Merci pour l'envoi !", date: "2025-04-05T09:00:00", lu: false },
+  { id: 20, expediteur: "Jean Mbélé", expediteurRole: "student", expediteurAvatar: "https://ui-avatars.com/api/?name=Jean+M&background=8b5cf6&color=fff", destinataireClasse: "user:teacher1", contenu: "Monsieur, j'ai une question sur l'exercice 3 du DM.", date: "2025-04-06T14:00:00", lu: false },
+  { id: 21, expediteur: "M. Kanga", expediteurRole: "teacher", expediteurAvatar: "https://ui-avatars.com/api/?name=Kanga&background=10b981&color=fff", destinataireClasse: "user:student1", contenu: "Viens me voir en perm, je t'expliquerai en détail.", date: "2025-04-06T15:00:00", lu: false },
+  { id: 22, expediteur: "Élise Nend", expediteurRole: "student", expediteurAvatar: "https://ui-avatars.com/api/?name=Elise&background=8b5cf6&color=fff", destinataireClasse: "user:teacher1", contenu: "Monsieur, est-ce qu'on peut rendre le devoir en avance ?", date: "2025-04-07T08:00:00", lu: false },
 ];
 
-export default function CommunicationPage() {
-  const [messages, setMessages] = useState<Message[]>(initialMessages);
+export default function ChatPage() {
+  const [messages, setMessages, loadingMessages] = useMessagesStore();
   const [conversationType, setConversationType] = useState<"classe" | "prive">("classe");
   const [selectedClasse, setSelectedClasse] = useState(currentUser.role === "student" ? currentUser.classe : "all");
   const [selectedContact, setSelectedContact] = useState<Contact | null>(null);
   const [newMessage, setNewMessage] = useState("");
   const [search, setSearch] = useState("");
+  const [replyTo, setReplyTo] = useState<Message | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
-  // Filtrer les messages selon la conversation courante
-  const filteredMessages = messages
+  // Initialiser les messages par défaut
+  useEffect(() => {
+    if (messages.length === 0 && initialMessages.length > 0) {
+      setMessages(initialMessages);
+    }
+  }, [messages, setMessages]);
+
+  // Filtrer les messages
+  const filteredMessages = (messages || [])
     .filter(m => {
       if (conversationType === "classe") {
-        const classeId = selectedClasse === "all" ? "all" : `classe:${selectedClasse}`;
-        return m.destinataire === classeId || (m.destinataire === "all" && selectedClasse !== "all");
+        // Pour les messages de classe
+        if (selectedClasse === "all") {
+          return m.destinataireClasse === "all";
+        } else {
+          return m.destinataireClasse === selectedClasse;
+        }
       } else {
-        // Conversation privée : les messages où l'un des deux participants est l'utilisateur courant
+        // Pour les messages privés
         const otherId = selectedContact?.id;
         if (!otherId) return false;
         const currentUserId = `user:${currentUser.id}`;
         const targetId = `user:${otherId}`;
-        return (m.destinataire === currentUserId && m.expediteur === selectedContact?.nom) ||
-               (m.destinataire === targetId && m.expediteur === currentUser.name);
+        return m.destinataireClasse === currentUserId && m.expediteur === selectedContact?.nom ||
+               m.destinataireClasse === targetId && m.expediteur === currentUser.name;
       }
     })
     .sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
@@ -106,49 +132,69 @@ export default function CommunicationPage() {
   // Envoyer un message
   const sendMessage = () => {
     if (!newMessage.trim()) return;
-    let destinataire = "";
+    
+    let destinataireClasse = "";
     if (conversationType === "classe") {
-      destinataire = selectedClasse === "all" ? "all" : `classe:${selectedClasse}`;
+      destinataireClasse = selectedClasse === "all" ? "all" : selectedClasse;
     } else {
-      destinataire = `user:${selectedContact?.id}`;
+      destinataireClasse = `user:${selectedContact?.id}`;
     }
+    
+    let contenu = newMessage;
+    if (replyTo) {
+      contenu = `> @${replyTo.expediteur}: ${replyTo.contenu.substring(0, 60)}${replyTo.contenu.length > 60 ? "..." : ""}\n\n${newMessage}`;
+    }
+    
     const newMsg: Message = {
       id: Date.now(),
       expediteur: currentUser.name,
-      expediteurRole: currentUser.role as any,
+      expediteurRole: currentUser.role,
       expediteurAvatar: currentUser.avatar,
-      destinataire: destinataire,
-      contenu: newMessage,
+      destinataireClasse: destinataireClasse,
+      contenu: contenu,
       date: new Date().toISOString(),
       lu: false,
     };
-    setMessages([...messages, newMsg]);
+    setMessages([...(messages || []), newMsg]);
     setNewMessage("");
+    setReplyTo(null);
+  };
+
+  // Supprimer un message (admin seulement)
+  const deleteMessage = (id: number) => {
+    if (currentUser.role === "admin" && confirm("Supprimer ce message ?")) {
+      setMessages((messages || []).filter(m => m.id !== id));
+    }
+  };
+
+  // Marquer comme lu
+  const markAsRead = (msg: Message) => {
+    if (!msg.lu && msg.expediteur !== currentUser.name) {
+      setMessages((messages || []).map(m => m.id === msg.id ? { ...m, lu: true } : m));
+    }
   };
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [filteredMessages]);
 
-  // Calculer le nombre de messages non lus pour la conversation courante
-  const nonLus = messages.filter(m => !m.lu && 
+  const nonLus = (messages || []).filter(m => !m.lu && m.expediteur !== currentUser.name && 
     (conversationType === "classe" 
-      ? (m.destinataire === (selectedClasse === "all" ? "all" : `classe:${selectedClasse}`) || (m.destinataire === "all" && selectedClasse !== "all"))
-      : (m.destinataire === `user:${selectedContact?.id}` && m.expediteur !== currentUser.name))
+      ? (selectedClasse === "all" ? m.destinataireClasse === "all" : m.destinataireClasse === selectedClasse)
+      : (m.destinataireClasse === `user:${selectedContact?.id}`))
   ).length;
 
   // Rendu des bulles
   const renderMessage = (msg: Message) => {
     const isOwn = msg.expediteur === currentUser.name;
     return (
-      <div key={msg.id} className={`flex gap-3 ${isOwn ? "flex-row-reverse" : ""} mb-4`}>
+      <div key={msg.id} className={`flex gap-3 ${isOwn ? "flex-row-reverse" : ""} mb-4 group`} onMouseEnter={() => markAsRead(msg)}>
         <img src={msg.expediteurAvatar} className="w-8 h-8 rounded-full object-cover" alt="" />
         <div className={`max-w-[70%] ${isOwn ? "items-end" : ""}`}>
           <div className="flex items-center gap-2 mb-1 flex-wrap">
             <span 
               className="text-xs font-bold text-slate-700 cursor-pointer hover:underline"
               onClick={() => {
-                // Cliquer sur le nom de l'expéditeur pour démarrer une conversation privée
                 const contact = contactsInitiaux.find(c => c.nom === msg.expediteur);
                 if (contact && contact.id !== currentUser.id) {
                   setConversationType("prive");
@@ -162,15 +208,32 @@ export default function CommunicationPage() {
             {msg.expediteurRole === "admin" && <span className="text-[9px] bg-blue-200 text-blue-800 px-1.5 py-0.5 rounded-full">Admin</span>}
             {msg.expediteurRole === "teacher" && <span className="text-[9px] bg-emerald-200 text-emerald-800 px-1.5 py-0.5 rounded-full">Enseignant</span>}
             {msg.expediteurRole === "student" && <span className="text-[9px] bg-purple-200 text-purple-800 px-1.5 py-0.5 rounded-full">Élève</span>}
+            {!msg.lu && !isOwn && <span className="text-[9px] bg-blue-500 text-white px-1.5 py-0.5 rounded-full">Nouveau</span>}
           </div>
           <div className={`p-3 rounded-2xl ${isOwn ? "bg-blue-500 text-white" : "bg-white border border-slate-100 shadow-sm"} text-sm`}>
-            {msg.contenu}
-            {msg.pieceJointe && <div className="text-xs mt-1 flex items-center gap-1"><Paperclip size={12}/> {msg.pieceJointe}</div>}
+            {msg.contenu.split('\n').map((line, i) => {
+              if (line.startsWith('> @')) {
+                return <div key={i} className="text-xs text-slate-400 italic bg-slate-50 p-1 rounded mb-1">{line}</div>;
+              }
+              return <div key={i}>{line}</div>;
+            })}
           </div>
+          {!isOwn && (
+            <div className="flex gap-2 mt-1 opacity-0 group-hover:opacity-100 transition">
+              <button onClick={() => setReplyTo(msg)} className="text-[10px] text-slate-400 hover:text-blue-500 flex items-center gap-1"><Reply size={10}/> Répondre</button>
+              {currentUser.role === "admin" && (
+                <button onClick={() => deleteMessage(msg.id)} className="text-[10px] text-slate-400 hover:text-red-500 flex items-center gap-1"><Trash2 size={10}/> Supprimer</button>
+              )}
+            </div>
+          )}
         </div>
       </div>
     );
   };
+
+  if (loadingMessages) {
+    return <div className="p-8 text-center">Chargement des messages...</div>;
+  }
 
   return (
     <div className="p-6 space-y-8 bg-gradient-to-br from-slate-50 to-white min-h-screen">
@@ -193,7 +256,7 @@ export default function CommunicationPage() {
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
-        {/* SIDEBAR : Navigation entre conversations */}
+        {/* SIDEBAR - CONVERSATIONS */}
         <div className="lg:col-span-1">
           <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
             <div className="p-4 border-b border-slate-100 bg-slate-50/50">
@@ -202,20 +265,20 @@ export default function CommunicationPage() {
               </h3>
             </div>
             <div className="divide-y divide-slate-100">
-              {/* Option : Annonces générales */}
+              {/* Annonces générales */}
               <button
-                onClick={() => { setConversationType("classe"); setSelectedClasse("all"); setSelectedContact(null); }}
+                onClick={() => { setConversationType("classe"); setSelectedClasse("all"); setSelectedContact(null); setReplyTo(null); }}
                 className={`w-full text-left px-4 py-3 hover:bg-slate-50 transition flex items-center gap-3 ${conversationType === "classe" && selectedClasse === "all" ? "bg-blue-50 border-l-4 border-blue-500" : ""}`}
               >
                 <Megaphone size={18} className="text-amber-500"/>
                 <div><p className="font-medium text-sm">Annonces générales</p><p className="text-[10px] text-slate-400">Toute l'école</p></div>
               </button>
               
-              {/* Classes disponibles pour l'utilisateur */}
+              {/* Classes */}
               {classes.filter(c => c.id !== "all" && (currentUser.role !== "student" || c.id === currentUser.classe)).map(classe => (
                 <button
                   key={classe.id}
-                  onClick={() => { setConversationType("classe"); setSelectedClasse(classe.id); setSelectedContact(null); }}
+                  onClick={() => { setConversationType("classe"); setSelectedClasse(classe.id); setSelectedContact(null); setReplyTo(null); }}
                   className={`w-full text-left px-4 py-3 hover:bg-slate-50 transition flex items-center gap-3 ${conversationType === "classe" && selectedClasse === classe.id ? "bg-blue-50 border-l-4 border-blue-500" : ""}`}
                 >
                   <Users size={18} className="text-blue-500"/>
@@ -223,12 +286,12 @@ export default function CommunicationPage() {
                 </button>
               ))}
 
-              {/* Section des conversations privées */}
+              {/* Messages privés */}
               <div className="pt-2 pb-1 px-4 text-[10px] font-bold text-slate-400 uppercase tracking-wider">Messages privés</div>
               {contactsInitiaux.filter(c => c.id !== currentUser.id).map(contact => (
                 <button
                   key={contact.id}
-                  onClick={() => { setConversationType("prive"); setSelectedContact(contact); }}
+                  onClick={() => { setConversationType("prive"); setSelectedContact(contact); setReplyTo(null); }}
                   className={`w-full text-left px-4 py-3 hover:bg-slate-50 transition flex items-center gap-3 ${conversationType === "prive" && selectedContact?.id === contact.id ? "bg-blue-50 border-l-4 border-blue-500" : ""}`}
                 >
                   <User size={18} className="text-purple-500"/>
@@ -271,9 +334,15 @@ export default function CommunicationPage() {
 
           <div className="flex-1 overflow-y-auto p-4 space-y-2 bg-slate-50/20">
             {filteredMessages.length === 0 ? (
-              <div className="text-center py-12"><MessageSquare className="mx-auto text-slate-300" size={48}/><p className="text-slate-400 mt-2">Aucun message.</p></div>
+              <div className="text-center py-12"><MessageSquare className="mx-auto text-slate-300" size={48}/><p className="text-slate-400 mt-2">Aucun message. Soyez le premier à écrire !</p></div>
             ) : (
               filteredMessages.map(renderMessage)
+            )}
+            {replyTo && (
+              <div className="bg-blue-50 p-2 rounded-lg text-sm flex justify-between items-center">
+                <span>Réponse à <strong>{replyTo.expediteur}</strong>: {replyTo.contenu.substring(0, 50)}...</span>
+                <button onClick={() => setReplyTo(null)} className="text-slate-400 hover:text-slate-600"><X size={14}/></button>
+              </div>
             )}
             <div ref={messagesEndRef} />
           </div>
@@ -307,5 +376,5 @@ export default function CommunicationPage() {
         </div>
       </div>
     </div>
-  );
+  );  
 }

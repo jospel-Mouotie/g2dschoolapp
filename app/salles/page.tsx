@@ -1,3 +1,4 @@
+// app/salles/page.tsx
 "use client";
 import { useState, useMemo } from "react";
 import { useSallesStore } from "@/lib/stores";
@@ -14,7 +15,7 @@ function SalleModal({ salle, onSave, onClose }: any) {
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    const equipementsArray = form.equipements.split(",").map(e => e.trim()).filter(Boolean);
+    const equipementsArray = form.equipements.split(",").map((item: string) => item.trim()).filter(Boolean);
     onSave({
       nom: form.nom,
       capacite: Number(form.capacite),
@@ -52,14 +53,14 @@ export default function SallesPage() {
   const [editing, setEditing] = useState<any>(null);
 
   const filtered = useMemo(() => {
-    return salles.filter(s => s.nom.toLowerCase().includes(search.toLowerCase()));
+    return salles.filter((s: any) => s.nom.toLowerCase().includes(search.toLowerCase()));
   }, [salles, search]);
 
   const saveSalle = (data: any) => {
     if (editing) {
-      setSalles(salles.map(s => s.id === editing.id ? { ...editing, ...data } : s));
+      setSalles(salles.map((s: any) => s.id === editing.id ? { ...editing, ...data } : s));
     } else {
-      const newId = (Math.max(...salles.map(s => parseInt(s.id)), 0) + 1).toString();
+      const newId = (Math.max(...salles.map((s: any) => parseInt(s.id)), 0) + 1).toString();
       setSalles([...salles, { id: newId, ...data }]);
     }
     setShowModal(false);
@@ -68,7 +69,7 @@ export default function SallesPage() {
 
   const deleteSalle = (id: string) => {
     if (confirm("Supprimer cette salle définitivement ?")) {
-      setSalles(salles.filter(s => s.id !== id));
+      setSalles(salles.filter((s: any) => s.id !== id));
     }
   };
 
@@ -106,7 +107,7 @@ export default function SallesPage() {
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100">
-              {filtered.map(s => (
+              {filtered.map((s: any) => (
                 <tr key={s.id} className="hover:bg-slate-50 transition">
                   <td className="p-3 font-medium">{s.nom}</td>
                   <td className="p-3">{s.capacite} él.</td>

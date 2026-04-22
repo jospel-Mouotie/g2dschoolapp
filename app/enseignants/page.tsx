@@ -17,8 +17,9 @@ function getPhotoUrl(enseignant: any): string {
 
 function SelectionModal({ title, items, selected, onSave, onClose }: any) {
   const [search, setSearch] = useState("");
-  const [tempSelected, setTempSelected] = useState(selected);
+  const [tempSelected, setTempSelected] = useState<string[]>(selected);
   const filtered = items.filter((i: string) => i.toLowerCase().includes(search.toLowerCase()));
+  
   return (
     <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
       <div className="bg-white rounded-3xl max-w-lg w-full max-h-[80vh] flex flex-col p-6 shadow-2xl">
@@ -33,9 +34,18 @@ function SelectionModal({ title, items, selected, onSave, onClose }: any) {
         <div className="flex-1 overflow-y-auto space-y-2 mb-4">
           {filtered.map((item: string) => (
             <label key={item} className="flex items-center gap-3 p-2 hover:bg-slate-50 rounded-lg cursor-pointer">
-              <input type="checkbox" checked={tempSelected.includes(item)} onChange={() => 
-                setTempSelected(prev => prev.includes(item) ? prev.filter((i: string) => i !== item) : [...prev, item])
-              } className="w-4 h-4" />
+              <input 
+                type="checkbox" 
+                checked={tempSelected.includes(item)} 
+                onChange={() => {
+                  if (tempSelected.includes(item)) {
+                    setTempSelected(tempSelected.filter((i: string) => i !== item));
+                  } else {
+                    setTempSelected([...tempSelected, item]);
+                  }
+                }} 
+                className="w-4 h-4" 
+              />
               <span>{item}</span>
             </label>
           ))}
@@ -303,11 +313,10 @@ export default function EnseignantsPage() {
           <div className="overflow-x-auto">
             <table className="w-full text-sm table-fixed">
               <colgroup>
-                <col className="w-[240px]" />
+                <col className="w-[280px]" />
                 <col className="w-[120px]" />
                 <col className="w-[140px]" />
                 <col className="w-[120px]" />
-                <col className="w-[100px]" />
                 <col className="w-[100px]" />
                 <col className="w-[100px]" />
               </colgroup>
@@ -318,7 +327,6 @@ export default function EnseignantsPage() {
                   <th className="px-4 py-4 text-left">Matières</th>
                   <th className="px-4 py-4 text-left">Classes</th>
                   <th className="px-4 py-4 text-left">Statut</th>
-                  <th className="px-4 py-4 text-left">Bureau</th>
                   <th className="px-4 py-4 text-center">Actions</th>
                 </tr>
               </thead>
@@ -335,32 +343,31 @@ export default function EnseignantsPage() {
                             <p className="text-[10px] text-slate-400 font-bold truncate">{ens.email}</p>
                           </div>
                         </div>
-                      </td>
+                       </td>
                       <td className="px-4 py-3 text-xs text-slate-500 truncate">{ens.phone}</td>
                       <td className="px-4 py-3">
                         <div className="flex gap-1 flex-wrap">
                           {ens.matieres.slice(0, 2).map(m => <span key={m} className="bg-indigo-50 text-indigo-600 text-[9px] font-black px-2 py-0.5 rounded-md uppercase whitespace-nowrap">{m}</span>)}
                           {ens.matieres.length > 2 && <span className="text-[9px] text-slate-400">+{ens.matieres.length-2}</span>}
                         </div>
-                      </td>
+                       </td>
                       <td className="px-4 py-3">
                         <p className="text-[10px] font-bold text-slate-500 uppercase truncate">
                           {ens.classes.slice(0, 2).join(", ")}{ens.classes.length > 2 && " +" + (ens.classes.length-2)}
                         </p>
-                      </td>
+                       </td>
                       <td className="px-4 py-3">
                         <span className={`text-[9px] font-black px-3 py-1 rounded-full uppercase tracking-widest whitespace-nowrap ${ens.status === 'Titulaire' ? 'bg-emerald-50 text-emerald-600' : 'bg-orange-50 text-orange-600'}`}>
                           {ens.status}
                         </span>
-                      </td>
-                      <td className="px-4 py-3 text-xs text-slate-500 truncate">{ens.bureau || '—'}</td>
+                       </td>
                       <td className="px-4 py-3 text-center" onClick={e => e.stopPropagation()}>
                         <div className="flex justify-center gap-2">
                           <button onClick={() => router.push(`/enseignants/${ens.id}`)} className="p-1 text-slate-400 hover:text-indigo-600"><Eye size={16}/></button>
                           <button onClick={() => { setEditing(ens); setShowModal(true); }} className="p-1 text-slate-400 hover:text-indigo-600"><Edit size={16}/></button>
                           <button onClick={() => deleteEnseignant(ens.id)} className="p-1 text-slate-400 hover:text-red-500"><Trash2 size={16}/></button>
                         </div>
-                      </td>
+                       </td>
                     </tr>
                   );
                 })}
