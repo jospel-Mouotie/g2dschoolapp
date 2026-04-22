@@ -1,4 +1,3 @@
-// app/enseignants/page.tsx
 "use client";
 import { useState, useMemo } from "react";
 import { useRouter } from "next/navigation";
@@ -66,8 +65,6 @@ function EnseignantModal({ enseignant, onSave, onClose, allMatieres, allClasses 
     phone: enseignant?.phone || "",
     status: enseignant?.status || "Titulaire",
     photo: enseignant?.photo || "",
-    bureau: enseignant?.bureau || "",
-    horaires: enseignant?.horaires || "",
   });
   const [selectedMatieres, setSelectedMatieres] = useState<string[]>(enseignant?.matieres || []);
   const [selectedClasses, setSelectedClasses] = useState<string[]>(enseignant?.classes || []);
@@ -112,8 +109,6 @@ function EnseignantModal({ enseignant, onSave, onClose, allMatieres, allClasses 
                 <div><label>Email</label><input required type="email" value={form.email} onChange={e => setForm({...form, email: e.target.value})} className="w-full border rounded-xl p-2" /></div>
                 <div><label>Téléphone</label><input required value={form.phone} onChange={e => setForm({...form, phone: e.target.value})} className="w-full border rounded-xl p-2" /></div>
                 <div><label>Statut</label><select value={form.status} onChange={e => setForm({...form, status: e.target.value})} className="w-full border rounded-xl p-2"><option>Titulaire</option><option>Contractuel</option><option>Contractuelle</option><option>Vacataire</option></select></div>
-                <div><label>Bureau</label><input value={form.bureau} onChange={e => setForm({...form, bureau: e.target.value})} className="w-full border rounded-xl p-2" /></div>
-                <div><label>Horaires</label><input value={form.horaires} onChange={e => setForm({...form, horaires: e.target.value})} className="w-full border rounded-xl p-2" /></div>
               </div>
               <div className="space-y-4">
                 <div>
@@ -292,7 +287,6 @@ export default function EnseignantsPage() {
                 <div className="space-y-3 mb-6">
                   <div className="flex items-center gap-3 text-slate-400"><Mail size={12}/><span className="text-[11px] font-bold truncate">{ens.email}</span></div>
                   <div className="flex items-center gap-3 text-slate-400"><Phone size={12}/><span className="text-[11px] font-bold">{ens.phone}</span></div>
-                  <div className="flex items-center gap-3 text-slate-400"><MapPin size={12}/><span className="text-[11px] font-bold">Bureau {ens.bureau || '—'}</span></div>
                 </div>
                 <div className="flex flex-wrap gap-1 mb-6">
                   {ens.matieres.slice(0, 2).map(m => <span key={m} className="bg-indigo-50 text-indigo-600 text-[9px] font-black px-2 py-1 rounded-md uppercase tracking-wider">{m}</span>)}
@@ -343,31 +337,31 @@ export default function EnseignantsPage() {
                             <p className="text-[10px] text-slate-400 font-bold truncate">{ens.email}</p>
                           </div>
                         </div>
-                       </td>
+                      </td>
                       <td className="px-4 py-3 text-xs text-slate-500 truncate">{ens.phone}</td>
                       <td className="px-4 py-3">
                         <div className="flex gap-1 flex-wrap">
                           {ens.matieres.slice(0, 2).map(m => <span key={m} className="bg-indigo-50 text-indigo-600 text-[9px] font-black px-2 py-0.5 rounded-md uppercase whitespace-nowrap">{m}</span>)}
                           {ens.matieres.length > 2 && <span className="text-[9px] text-slate-400">+{ens.matieres.length-2}</span>}
                         </div>
-                       </td>
+                      </td>
                       <td className="px-4 py-3">
                         <p className="text-[10px] font-bold text-slate-500 uppercase truncate">
                           {ens.classes.slice(0, 2).join(", ")}{ens.classes.length > 2 && " +" + (ens.classes.length-2)}
                         </p>
-                       </td>
+                      </td>
                       <td className="px-4 py-3">
                         <span className={`text-[9px] font-black px-3 py-1 rounded-full uppercase tracking-widest whitespace-nowrap ${ens.status === 'Titulaire' ? 'bg-emerald-50 text-emerald-600' : 'bg-orange-50 text-orange-600'}`}>
                           {ens.status}
                         </span>
-                       </td>
+                      </td>
                       <td className="px-4 py-3 text-center" onClick={e => e.stopPropagation()}>
                         <div className="flex justify-center gap-2">
                           <button onClick={() => router.push(`/enseignants/${ens.id}`)} className="p-1 text-slate-400 hover:text-indigo-600"><Eye size={16}/></button>
                           <button onClick={() => { setEditing(ens); setShowModal(true); }} className="p-1 text-slate-400 hover:text-indigo-600"><Edit size={16}/></button>
                           <button onClick={() => deleteEnseignant(ens.id)} className="p-1 text-slate-400 hover:text-red-500"><Trash2 size={16}/></button>
                         </div>
-                       </td>
+                      </td>
                     </tr>
                   );
                 })}
