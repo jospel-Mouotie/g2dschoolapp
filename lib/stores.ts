@@ -39,7 +39,6 @@ export interface Chapitre {
   duree?: number;
 }
 
-// lib/stores.ts - Ajoutez ces champs à l'interface Eleve
 export interface Eleve {
   id: number;
   nom: string;
@@ -51,24 +50,24 @@ export interface Eleve {
   email?: string;
   telephone?: string;
   dateNaissance?: string;
-  selected?: boolean;
-  moyenne?: string;
-  noteColor?: string;
-  // Nouveaux champs pour les parents
+  lieuNaissance?: string;
+  nationalite?: string;
+  sexe?: "M" | "F";
+  adresse?: string;
   parentNom?: string;
   parentTelephone?: string;
   parentEmail?: string;
   parentProfession?: string;
-  adresse?: string;
   dateInscription?: string;
-  lieuNaissance?: string;
-  nationalite?: string;
-  sexe?: "M" | "F";
   ancienEtablissement?: string;
   redoublant?: boolean;
   situationFamiliale?: string;
   nomComplet?: string;
+  selected?: boolean;
+  moyenne?: string;
+  noteColor?: string;
 }
+
 export interface Module {
   id: string;
   titre: string;
@@ -91,6 +90,8 @@ export interface Enseignant {
   classes: string[];
   status: string;
   photo: string;
+  bureau?: string;
+  horaires?: string;
   coursIds?: string[];
   enseignements?: Enseignement[];
 }
@@ -122,9 +123,9 @@ export interface Message {
   contenu: string;
   date: string;
   lu: boolean;
+  pieceJointe?: string;
 }
 
-// lib/stores.ts - Interface Document améliorée
 export interface Document {
   id: number;
   nom: string;
@@ -137,9 +138,9 @@ export interface Document {
   url: string;
   auteur: string;
   auteurId?: number;
-  approuve?: boolean;      // pour validation admin
-  telechargements?: number; // compteur de téléchargements
-  favori?: boolean;         // document favori
+  approuve?: boolean;
+  telechargements?: number;
+  favori?: boolean;
 }
 
 export interface Transaction {
@@ -154,9 +155,12 @@ export interface Transaction {
   reference?: string;
 }
 
+// Interface NOTE avec deux évaluations (eval1 et eval2)
 export interface Note {
   eleveId: number;
-  valeur: number | null;
+  eval1: number | null;
+  eval2: number | null;
+  moyenne: number | null;
   appreciation?: string;
 }
 
@@ -195,6 +199,27 @@ export interface Classe {
   nom: string;
   niveauId: string;
   effectif?: number;
+}
+
+export interface Etablissement {
+  id: string;
+  nom: string;
+  logo?: string;
+  adresse: string;
+  telephone: string;
+  email: string;
+  devise?: string;
+  anneeScolaire: string;
+  region?: string;
+  delegation?: string;
+  departement?: string;
+}
+
+export interface Pause {
+  id: string;
+  heureDebut: string;
+  heureFin: string;
+  description: string;
 }
 
 // ========== FONCTIONS UTILITAIRES ==========
@@ -308,6 +333,7 @@ export function useSallesStore() {
   ];
   return useIndexedDB("salles", initialSalles);
 }
+
 export function useMatieresStore() {
   const initialMatieres: Matiere[] = [
     { id: "1", nom: "MATHÉMATIQUES", coefficient: 4, description: "Mathématiques générales" },
@@ -363,19 +389,6 @@ export function useClassesStore() {
   ];
   return useIndexedDB("classes", initialClasses);
 }
-export interface Etablissement {
-  id: string;
-  nom: string;
-  logo?: string; // URL ou base64 du logo
-  adresse: string;
-  telephone: string;
-  email: string;
-  devise?: string;
-  anneeScolaire: string;
-  region?: string;
-  delegation?: string;
-  departement?: string;
-}
 
 export function useEtablissementStore() {
   const initialEtablissement: Etablissement = {
@@ -392,24 +405,9 @@ export function useEtablissementStore() {
   return useIndexedDB("etablissement", initialEtablissement);
 }
 
-export interface Pause {
-  id: string;
-  heureDebut: string;   // format "12:00"
-  heureFin: string;     // format "14:00"
-  description: string;  // ex: "Pause déjeuner"
-}
-
 export function usePausesStore() {
   const initialPauses: Pause[] = [
     { id: "1", heureDebut: "12:00", heureFin: "14:00", description: "Pause déjeuner" },
   ];
   return useIndexedDB("pauses", initialPauses);
-}
-
-
-export interface Niveau {
-  id: string;
-  nom: string;        // ex: "6ème", "Form 1", 
-  description?: string;
-  ordre: number;      // pour l'ordre d'affichage
 }
