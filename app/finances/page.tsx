@@ -5,7 +5,7 @@ import {
   Wallet, TrendingUp, TrendingDown, Plus, Download, Printer,
   Search, Clock, X, BarChart3, FileText, Settings, Receipt,
   User, DollarSign, CheckCircle, AlertCircle, CreditCard,
-  Calendar, Phone, Mail, MapPin, Building, Percent, Send, MessageCircle
+  Calendar, Phone, Mail, MapPin, Building, Percent, Send
 } from "lucide-react";
 import { useTransactionsStore, useElevesStore, useFraisStore, useEtablissementStore } from "@/lib/stores";
 
@@ -26,109 +26,169 @@ function classeToNiveau(classe: string): string {
   return map[classe] || classe;
 }
 
-// ─── FONCTIONS D'ENVOI ─────────────────────────────────────────────────────────
+// ─── Fonctions d'envoi d'email ─────────────────────────────────────────────────
 
-// Générer le message WhatsApp pour le reçu
-function genererMessageWhatsApp(eleve: any, paiement: any, totalDu: number, etablissement: any): string {
+// Générer l'email HTML pour le reçu
+function genererEmailReçu(
+  eleve: any, 
+  paiement: any, 
+  totalDu: number, 
+  etablissement: any
+): { sujet: string; html: string; text: string } {
   const reste = totalDu - paiement.montant;
   const date = new Date(paiement.date).toLocaleDateString('fr-FR');
-  
-  return `🧾 *REÇU DE PAIEMENT - ${etablissement?.nom || "GROUPE SCOLAIRE DIGITAL"}*
+  const nomEtab = etablissement?.nom || "Établissement Scolaire";
+  const adresse = etablissement?.adresse || "";
+  const telephone = etablissement?.telephone || "";
+  const emailEtab = etablissement?.email || "";
+  const logoUrl = etablissement?.logo || "";
+  const annee = etablissement?.anneeScolaire || "2024/2025";
 
-👨‍🎓 *Élève :* ${eleve.nom}
-📚 *Classe :* ${eleve.classe}
-📅 *Date :* ${date}
-
-💰 *Montant payé :* ${paiement.montant.toLocaleString()} FCFA
-💳 *Méthode :* ${paiement.methode}
-${paiement.reference ? `📎 *Référence :* ${paiement.reference}` : ''}
-
-📊 *SITUATION FINANCIÈRE*
-├─ Total dû : ${totalDu.toLocaleString()} FCFA
-├─ Déjà payé : ${paiement.montant.toLocaleString()} FCFA
-└─ Reste à payer : ${reste > 0 ? reste.toLocaleString() : "0"} FCFA
-
-${reste <= 0 ? '✅ *COMPTE SOLDÉ* - Merci pour votre paiement intégral !' : '📌 Prochain paiement à effectuer pour solde restant.'}
-
----
-${etablissement?.nom || "Établissement scolaire"}
-${etablissement?.adresse || ""}
-📞 ${etablissement?.telephone || ""}
-📧 ${etablissement?.email || ""}`;
-}
-
-// Générer l'email pour le reçu
-function genererEmailReçu(eleve: any, paiement: any, totalDu: number, etablissement: any): { sujet: string; corps: string } {
-  const reste = totalDu - paiement.montant;
-  const date = new Date(paiement.date).toLocaleDateString('fr-FR');
-  
   const sujet = `🧾 Reçu de paiement - ${eleve.nom} - ${date}`;
   
-  const corps = `
-Cher(e) parent / tuteur de ${eleve.nom},
-
-Nous vous confirmons la réception du paiement suivant :
-
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-🏫 ${etablissement?.nom || "GROUPE SCOLAIRE DIGITAL"}
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-
-📋 *DÉTAILS DU PAIEMENT*
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-👨‍🎓 Élève : ${eleve.nom}
-📚 Classe : ${eleve.classe}
-📅 Date : ${date}
-💰 Montant : ${paiement.montant.toLocaleString()} FCFA
-💳 Méthode : ${paiement.methode}
-${paiement.reference ? `📎 Référence : ${paiement.reference}` : ''}
-
-📊 *SITUATION FINANCIÈRE*
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-• Total des frais de scolarité : ${totalDu.toLocaleString()} FCFA
-• Total déjà versé : ${paiement.montant.toLocaleString()} FCFA
-• Solde restant : ${reste > 0 ? reste.toLocaleString() : "0"} FCFA
-
-${reste <= 0 ? '✅ FÉLICITATIONS ! Votre compte est entièrement soldé.' : '📌 Veuillez régulariser le solde restant dans les meilleurs délais.'}
-
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-*${etablissement?.nom || "Établissement scolaire"}*
-${etablissement?.adresse || ""}
-📞 ${etablissement?.telephone || ""}
-📧 ${etablissement?.email || ""}
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-
-Cordialement,
-La Direction financière
-  `;
+  const text = `REÇU DE PAIEMENT - ${nomEtab}
   
-  return { sujet, corps };
+Élève : ${eleve.nom}
+Classe : ${eleve.classe}
+Date : ${date}
+Montant : ${paiement.montant.toLocaleString()} FCFA
+Méthode : ${paiement.methode}
+${paiement.reference ? `Référence : ${paiement.reference}` : ''}
+
+Situation financière :
+- Total dû : ${totalDu.toLocaleString()} FCFA
+- Montant payé : ${paiement.montant.toLocaleString()} FCFA
+- Solde restant : ${reste > 0 ? reste.toLocaleString() : "0"} FCFA
+
+${reste <= 0 ? '✅ COMPTE SOLDÉ - Merci pour votre paiement intégral !' : '📌 Veuillez régulariser le solde restant.'}
+
+---
+${nomEtab}
+${adresse}
+📞 ${telephone}
+📧 ${emailEtab}`;
+
+  const html = `<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <style>
+    body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; }
+    .header { background: linear-gradient(135deg, #1e3a8a, #3b82f6); padding: 20px; text-align: center; border-radius: 10px 10px 0 0; }
+    .logo { max-width: 80px; margin-bottom: 10px; }
+    .school-name { color: white; font-size: 24px; font-weight: bold; margin: 0; }
+    .school-info { color: #e0e7ff; font-size: 12px; margin-top: 5px; }
+    .content { background: #f3f4f6; padding: 20px; border-radius: 0 0 10px 10px; }
+    .receipt-title { text-align: center; margin-bottom: 20px; }
+    .receipt-title h2 { color: #1e3a8a; margin: 0; }
+    .receipt-title p { color: #6b7280; font-size: 12px; margin: 5px 0 0; }
+    .info-card { background: white; padding: 15px; border-radius: 8px; margin-bottom: 20px; border-left: 4px solid #3b82f6; }
+    .info-row { display: flex; justify-content: space-between; padding: 8px 0; border-bottom: 1px solid #e5e7eb; }
+    .info-row:last-child { border-bottom: none; }
+    .info-label { font-weight: bold; color: #4b5563; }
+    .info-value { font-weight: bold; }
+    .amount { font-size: 24px; color: #10b981; }
+    .remaining { font-size: 18px; }
+    .status-sold { background: #d1fae5; color: #065f46; padding: 10px; border-radius: 8px; text-align: center; margin-top: 15px; }
+    .status-pending { background: #fed7aa; color: #92400e; padding: 10px; border-radius: 8px; text-align: center; margin-top: 15px; }
+    .footer { text-align: center; font-size: 11px; color: #6b7280; margin-top: 20px; padding-top: 15px; border-top: 1px solid #e5e7eb; }
+  </style>
+</head>
+<body>
+  <div style="max-width: 600px; margin: 0 auto;">
+    <div class="header">
+      ${logoUrl ? `<img src="${logoUrl}" alt="Logo" class="logo">` : ''}
+      <h1 class="school-name">${nomEtab}</h1>
+      <p class="school-info">${adresse} | 📞 ${telephone} | 📧 ${emailEtab}</p>
+    </div>
+    <div class="content">
+      <div class="receipt-title">
+        <h2>🧾 REÇU DE PAIEMENT</h2>
+        <p>N° ${paiement.id}-${new Date().getFullYear()} | ${annee}</p>
+      </div>
+      
+      <div class="info-card">
+        <div class="info-row">
+          <span class="info-label">👨‍🎓 Élève :</span>
+          <span class="info-value">${eleve.nom}</span>
+        </div>
+        <div class="info-row">
+          <span class="info-label">📚 Classe :</span>
+          <span class="info-value">${eleve.classe}</span>
+        </div>
+        <div class="info-row">
+          <span class="info-label">📅 Date :</span>
+          <span class="info-value">${date}</span>
+        </div>
+        <div class="info-row">
+          <span class="info-label">💰 Montant :</span>
+          <span class="info-value amount">${paiement.montant.toLocaleString()} FCFA</span>
+        </div>
+        <div class="info-row">
+          <span class="info-label">💳 Méthode :</span>
+          <span class="info-value">${paiement.methode}</span>
+        </div>
+        ${paiement.reference ? `
+        <div class="info-row">
+          <span class="info-label">📎 Référence :</span>
+          <span class="info-value">${paiement.reference}</span>
+        </div>` : ''}
+      </div>
+      
+      <div class="info-card">
+        <div class="info-row">
+          <span class="info-label">📊 Total des frais :</span>
+          <span class="info-value">${totalDu.toLocaleString()} FCFA</span>
+        </div>
+        <div class="info-row">
+          <span class="info-label">✅ Total déjà payé :</span>
+          <span class="info-value">${paiement.montant.toLocaleString()} FCFA</span>
+        </div>
+        <div class="info-row">
+          <span class="info-label">📌 Solde restant :</span>
+          <span class="info-value remaining ${reste <= 0 ? 'good' : 'pending'}">${reste > 0 ? reste.toLocaleString() : "0"} FCFA</span>
+        </div>
+      </div>
+      
+      ${reste <= 0 
+        ? '<div class="status-sold">✅ FÉLICITATIONS ! Votre compte est entièrement soldé. Merci pour votre confiance.</div>'
+        : '<div class="status-pending">⚠️ Veuillez régulariser le solde restant dans les meilleurs délais.</div>'}
+      
+      <div class="footer">
+        <p>${nomEtab} - Excellence & Innovation</p>
+        <p>${adresse} | 📞 ${telephone} | 📧 ${emailEtab}</p>
+        <p>© ${new Date().getFullYear()} ${nomEtab} - Tous droits réservés</p>
+      </div>
+    </div>
+  </div>
+</body>
+</html>`;
+
+  return { sujet, html, text };
 }
 
-// Envoyer WhatsApp
-async function envoyerWhatsApp(telephone: string, message: string): Promise<boolean> {
-  if (!telephone) return false;
-  let numero = telephone.replace(/\s/g, '').replace(/^0+/, '');
-  if (!numero.startsWith('237') && !numero.startsWith('+237')) {
-    numero = '237' + numero;
+// Fonction d'envoi d'email via l'API
+async function envoyerEmailReçu(
+  to: string,
+  sujet: string,
+  html: string,
+  text: string
+): Promise<{ success: boolean; error?: string }> {
+  try {
+    const response = await fetch('/api/send-email', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ to, subject: sujet, html, text })
+    });
+    const data = await response.json();
+    return { success: data.success, error: data.error };
+  } catch (error: any) {
+    return { success: false, error: error.message };
   }
-  if (!numero.startsWith('+')) {
-    numero = '+' + numero;
-  }
-  const messageEncode = encodeURIComponent(message);
-  const whatsappUrl = `https://wa.me/${numero}?text=${messageEncode}`;
-  window.open(whatsappUrl, '_blank');
-  return true;
 }
 
-// Envoyer Email
-async function envoyerEmail(email: string, sujet: string, corps: string): Promise<boolean> {
-  if (!email) return false;
-  const mailtoUrl = `mailto:${email}?subject=${encodeURIComponent(sujet)}&body=${encodeURIComponent(corps)}`;
-  window.open(mailtoUrl, '_blank');
-  return true;
-}
+// ─── Modal pour définir les frais par niveau ───────────────────────────────────
 
-// Modal pour définir les frais par niveau
 function FraisModal({ fraisList, onSave, onClose }: any) {
   const [frais, setFrais] = useState(fraisList);
   const handleChange = (niveau: string, montant: number) => {
@@ -163,7 +223,8 @@ function FraisModal({ fraisList, onSave, onClose }: any) {
   );
 }
 
-// Modal global de paiement avec validation
+// ─── Modal global de paiement avec validation ─────────────────────────────────
+
 function PaiementGlobalModal({ onSave, onClose, elevesList, elevesFinance }: any) {
   const [classe, setClasse] = useState("6A");
   const [eleveNom, setEleveNom] = useState("");
@@ -316,7 +377,7 @@ function PaiementGlobalModal({ onSave, onClose, elevesList, elevesFinance }: any
           
           <label className="flex items-center gap-2 cursor-pointer p-2 hover:bg-slate-50 rounded-lg">
             <input type="checkbox" checked={genererRecu} onChange={e => setGenererRecu(e.target.checked)} className="w-4 h-4 text-blue-600" /> 
-            Générer un reçu
+            Envoyer le reçu par email au parent
           </label>
           
           <div className="flex gap-3 pt-2">
@@ -335,7 +396,8 @@ function PaiementGlobalModal({ onSave, onClose, elevesList, elevesFinance }: any
   );
 }
 
-// Modal détaillée des paiements d'un élève
+// ─── Modal détaillée des paiements d'un élève ─────────────────────────────────
+
 function DetailEleveModal({ eleve, transactions, fraisTotal, onClose, etablissement }: any) {
   const paiements = transactions.filter((t: any) => t.eleve === eleve.nom && t.type === "Paiement");
   const totalPaye = paiements.reduce((sum: number, t: any) => sum + t.montant, 0);
@@ -345,22 +407,17 @@ function DetailEleveModal({ eleve, transactions, fraisTotal, onClose, etablissem
   const [envoiStatus, setEnvoiStatus] = useState<{ [key: number]: string }>({});
 
   const handleRenvoiReçu = async (paiement: any) => {
+    if (!eleve.parentEmail) {
+      alert("Aucun email parent renseigné pour cet élève");
+      return;
+    }
+    
     setEnvoiStatus(prev => ({ ...prev, [paiement.id]: "envoi" }));
     
-    const msgWhatsApp = genererMessageWhatsApp(eleve, paiement, fraisTotal, etablissement);
     const emailData = genererEmailReçu(eleve, paiement, fraisTotal, etablissement);
+    const result = await envoyerEmailReçu(eleve.parentEmail, emailData.sujet, emailData.html, emailData.text);
     
-    let whatsappOk = false;
-    let emailOk = false;
-    
-    if (eleve.parentTelephone) {
-      whatsappOk = await envoyerWhatsApp(eleve.parentTelephone, msgWhatsApp);
-    }
-    if (eleve.parentEmail) {
-      emailOk = await envoyerEmail(eleve.parentEmail, emailData.sujet, emailData.corps);
-    }
-    
-    if (whatsappOk || emailOk) {
+    if (result.success) {
       setEnvoiStatus(prev => ({ ...prev, [paiement.id]: "success" }));
       setTimeout(() => setEnvoiStatus(prev => ({ ...prev, [paiement.id]: "" })), 3000);
     } else {
@@ -408,25 +465,27 @@ function DetailEleveModal({ eleve, transactions, fraisTotal, onClose, etablissem
                       >
                         <Receipt size={16}/>
                       </button>
-                      <button 
-                        onClick={() => handleRenvoiReçu(p)} 
-                        className="p-2 text-green-600 hover:bg-green-50 rounded-lg transition"
-                        title="Renvoyer le reçu au parent"
-                        disabled={!eleve.parentTelephone && !eleve.parentEmail}
-                      >
-                        {envoiStatus[p.id] === "envoi" ? (
-                          <div className="w-4 h-4 border-2 border-green-600 border-t-transparent rounded-full animate-spin" />
-                        ) : envoiStatus[p.id] === "success" ? (
-                          <CheckCircle size={16} className="text-emerald-500" />
-                        ) : envoiStatus[p.id] === "error" ? (
-                          <AlertCircle size={16} className="text-red-500" />
-                        ) : (
-                          <Send size={16} />
-                        )}
-                      </button>
+                      {eleve.parentEmail && (
+                        <button 
+                          onClick={() => handleRenvoiReçu(p)} 
+                          className="p-2 text-green-600 hover:bg-green-50 rounded-lg transition"
+                          title="Renvoyer le reçu par email"
+                          disabled={envoiStatus[p.id] === "envoi"}
+                        >
+                          {envoiStatus[p.id] === "envoi" ? (
+                            <div className="w-4 h-4 border-2 border-green-600 border-t-transparent rounded-full animate-spin" />
+                          ) : envoiStatus[p.id] === "success" ? (
+                            <CheckCircle size={16} className="text-emerald-500" />
+                          ) : envoiStatus[p.id] === "error" ? (
+                            <AlertCircle size={16} className="text-red-500" />
+                          ) : (
+                            <Send size={16} />
+                          )}
+                        </button>
+                      )}
                     </div>
-                  </td>
-                </tr>
+                   </td>
+                 </tr>
               ))}
             </tbody>
           </table>
@@ -447,7 +506,8 @@ function DetailEleveModal({ eleve, transactions, fraisTotal, onClose, etablissem
   );
 }
 
-// Modal de reçu professionnel avec logo de l'école
+// ─── Modal de reçu professionnel avec logo de l'école ─────────────────────────
+
 function RecuModal({ paiement, eleve, fraisTotal, onClose }: any) {
   const [etablissement] = useEtablissementStore();
   const reste = fraisTotal - paiement.montant;
@@ -502,6 +562,8 @@ function RecuModal({ paiement, eleve, fraisTotal, onClose }: any) {
     </div>
   );
 }
+
+// ─── PAGE PRINCIPALE ─────────────────────────────────────────────────────────
 
 export default function FinancesPage() {
   const [transactions, setTransactions] = useTransactionsStore();
@@ -561,25 +623,16 @@ export default function FinancesPage() {
 
   // Fonction pour envoyer le reçu au parent après paiement
   const envoyerReçuAuParent = async (eleve: any, paiement: any, totalDu: number) => {
-    const msgWhatsApp = genererMessageWhatsApp(eleve, paiement, totalDu, etablissement);
+    if (!eleve.parentEmail) {
+      return { success: false, error: "Aucun email parent renseigné" };
+    }
+    
     const emailData = genererEmailReçu(eleve, paiement, totalDu, etablissement);
-    
-    const resultats = [];
-    
-    if (eleve.parentTelephone) {
-      const whatsappOk = await envoyerWhatsApp(eleve.parentTelephone, msgWhatsApp);
-      resultats.push({ canal: "WhatsApp", success: whatsappOk });
-    }
-    if (eleve.parentEmail) {
-      const emailOk = await envoyerEmail(eleve.parentEmail, emailData.sujet, emailData.corps);
-      resultats.push({ canal: "Email", success: emailOk });
-    }
-    
-    return resultats;
+    return await envoyerEmailReçu(eleve.parentEmail, emailData.sujet, emailData.html, emailData.text);
   };
 
   const addPaiement = async (data: any) => {
-    // Vérification
+    // Vérification supplémentaire
     const eleveFinance = elevesFinance.find(e => e.nom === data.eleve);
     if (eleveFinance && data.montant > eleveFinance.reste && eleveFinance.reste > 0) {
       alert(`Le montant ne peut pas dépasser le reste à payer (${eleveFinance.reste.toLocaleString()} FCFA)`);
@@ -604,24 +657,23 @@ export default function FinancesPage() {
     setTransactions([...transactions, newTransaction]);
     setShowPaiementGlobalModal(false);
     
-    // Envoi automatique du reçu au parent si demandé
-    if (data.genererRecu && eleve && (eleve.parentTelephone || eleve.parentEmail)) {
+    // Envoi automatique du reçu par email si demandé
+    if (data.genererRecu && eleve && eleve.parentEmail) {
       setEnvoiStatus(prev => ({ ...prev, [newId]: "envoi" }));
       
-      const resultats = await envoyerReçuAuParent(eleve, newTransaction, eleveFinance?.totalDu || 150000);
+      const result = await envoyerReçuAuParent(eleve, newTransaction, eleveFinance?.totalDu || 150000);
       
-      const successCount = resultats.filter(r => r.success).length;
-      if (successCount > 0) {
+      if (result.success) {
         setEnvoiStatus(prev => ({ ...prev, [newId]: "success" }));
         setTimeout(() => setEnvoiStatus(prev => ({ ...prev, [newId]: "" })), 3000);
-        alert(`✅ Paiement enregistré ! Reçu envoyé par ${resultats.map(r => r.canal).join(" et ")}.`);
+        alert(`✅ Paiement enregistré ! Reçu envoyé par email à ${eleve.parentEmail}`);
       } else {
         setEnvoiStatus(prev => ({ ...prev, [newId]: "error" }));
         setTimeout(() => setEnvoiStatus(prev => ({ ...prev, [newId]: "" })), 3000);
-        alert(`⚠️ Paiement enregistré mais l'envoi du reçu a échoué. Vérifiez les coordonnées du parent.`);
+        alert(`⚠️ Paiement enregistré mais l'envoi du reçu a échoué: ${result.error}`);
       }
-    } else if (data.genererRecu && eleve && !eleve.parentTelephone && !eleve.parentEmail) {
-      alert(`✅ Paiement enregistré ! Aucun contact parent renseigné pour l'envoi du reçu.`);
+    } else if (data.genererRecu && eleve && !eleve.parentEmail) {
+      alert(`✅ Paiement enregistré ! Aucun email parent renseigné pour l'envoi du reçu.`);
     } else {
       alert(`✅ Paiement enregistré avec succès !`);
     }
@@ -658,7 +710,7 @@ export default function FinancesPage() {
           </thead>
           <tbody>
             ${filtered.map(e => `
-              <tr><td>${e.nom}</td><td>${e.classe}</td><td class="text-right">${e.totalDu.toLocaleString()} FCFA</td><td class="text-right">${e.totalPaye.toLocaleString()} FCFA</td><td class="text-right">${Math.max(0, e.reste).toLocaleString()} FCFA</td></tr>
+              <td>${e.nom}</td><td class="text-right">${e.classe}</td><td class="text-right">${e.totalDu.toLocaleString()} FCFA</td><td class="text-right">${e.totalPaye.toLocaleString()} FCFA</td><td class="text-right">${Math.max(0, e.reste).toLocaleString()} FCFA</td>
             `).join('')}
           </tbody>
         </table>
@@ -703,7 +755,7 @@ export default function FinancesPage() {
           <tbody>
             ${payes.map((e: any, idx: number) => {
               const statut = e.totalPaye >= e.totalDu ? "Soldé" : "Partiel";
-              return `<tr><td>${idx + 1}</td><td>${e.nom}</td><td>${e.classe}</td><td class="text-right">${e.totalPaye.toLocaleString()} FCFA</td><td class="text-center">${statut}</td></tr>`;
+              return `<tr><td class="text-center">${idx + 1}</td><td class="text-right">${e.nom}</td><td class="text-right">${e.classe}</td><td class="text-right">${e.totalPaye.toLocaleString()} FCFA</td><td class="text-center">${statut}</td></tr>`;
             }).join('')}
           </tbody>
         </table>
@@ -866,84 +918,74 @@ export default function FinancesPage() {
         </div>
       </div>
 
-   
- {/* TABLEAU DES ÉLÈVES */}
-<div className="bg-white rounded-2xl border border-slate-100 shadow-sm overflow-hidden">
-  <div className="overflow-x-auto">
-    <table className="w-full text-sm">
-      <thead className="bg-gradient-to-r from-slate-50 to-slate-100 border-b border-slate-200">
-        <tr className="text-slate-600 text-[11px] font-bold uppercase tracking-wider">
-          <th className="px-4 py-3 text-left">Élève</th>
-          <th className="px-4 py-3 text-left">Classe</th>
-          <th className="px-4 py-3 text-right">Total dû</th>
-          <th className="px-4 py-3 text-right">Payé</th>
-          <th className="px-4 py-3 text-right">Reste</th>
-          <th className="px-4 py-3 text-center">Statut</th>
-          <th className="px-4 py-3 text-center">Parent</th>
-        </tr>
-      </thead>
-      <tbody className="divide-y divide-slate-50">
-        {filtered.map(e => {
-          let statut = "";
-          let statutColor = "";
-          
-          if (e.totalPaye === 0) {
-            statut = "Impayé";
-            statutColor = "bg-red-100 text-red-700";
-          } else if (e.totalPaye > 0 && e.totalPaye < e.totalDu) {
-            statut = "Partiel";
-            statutColor = "bg-amber-100 text-amber-700";
-          } else if (e.totalPaye >= e.totalDu) {
-            statut = "Soldé";
-            statutColor = "bg-emerald-100 text-emerald-700";
-          }
-          
-          const montantReste = Math.max(0, e.reste);
-          const hasContact = e.parentTelephone || e.parentEmail;
-          
-          return (
-            <tr key={e.id} className="hover:bg-slate-50 transition cursor-pointer group" onClick={() => { setSelectedEleve(e); setShowDetailModal(true); }}>
-              <td className="px-4 py-3 font-semibold text-slate-800">{e.nom}</td>
-              <td className="px-4 py-3 text-slate-500">{e.classe}</td>
-              <td className="px-4 py-3 text-right font-semibold text-slate-700">{e.totalDu.toLocaleString()} FCFA</td>
-              <td className="px-4 py-3 text-right text-emerald-600 font-semibold">{e.totalPaye.toLocaleString()} FCFA</td>
-              <td className={`px-4 py-3 text-right font-semibold ${montantReste === 0 ? 'text-emerald-600' : 'text-red-600'}`}>
-                {montantReste.toLocaleString()} FCFA
-              </td>
-              <td className="px-4 py-3 text-center">
-                <span className={`text-[10px] font-bold px-2 py-1 rounded-full ${statutColor}`}>{statut}</span>
-              </td>
-              <td className="px-4 py-3 text-center">
-                {hasContact ? (
-                  <div className="flex items-center justify-center gap-1">
-                    {e.parentTelephone && (
-                      <span title={`WhatsApp: ${e.parentTelephone}`} className="cursor-help">
-                        <MessageCircle size={14} className="text-green-500" />
-                      </span>
-                    )}
-                    {e.parentEmail && (
-                      <span title={`Email: ${e.parentEmail}`} className="cursor-help">
-                        <Mail size={14} className="text-blue-500" />
-                      </span>
-                    )}
-                  </div>
-                ) : (
-                  <span className="text-xs text-slate-400">—</span>
-                )}
-              </td>
-            </tr>
-          );
-        })}
-      </tbody>
-    </table>
-  </div>
-  {filtered.length === 0 && (
-    <div className="text-center py-12">
-      <div className="text-6xl mb-4">📭</div>
-      <p className="text-slate-400">Aucun élève trouvé</p>
-    </div>
-  )}
-</div>
+      {/* TABLEAU DES ÉLÈVES AVEC INDICATEUR EMAIL */}
+      <div className="bg-white rounded-2xl border border-slate-100 shadow-sm overflow-hidden">
+        <div className="overflow-x-auto">
+          <table className="w-full text-sm">
+            <thead className="bg-gradient-to-r from-slate-50 to-slate-100 border-b border-slate-200">
+              <tr className="text-slate-600 text-[11px] font-bold uppercase tracking-wider">
+                <th className="px-4 py-3 text-left">Élève</th>
+                <th className="px-4 py-3 text-left">Classe</th>
+                <th className="px-4 py-3 text-right">Total dû</th>
+                <th className="px-4 py-3 text-right">Payé</th>
+                <th className="px-4 py-3 text-right">Reste</th>
+                <th className="px-4 py-3 text-center">Statut</th>
+                <th className="px-4 py-3 text-center">Email parent</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-slate-50">
+              {filtered.map(e => {
+                let statut = "";
+                let statutColor = "";
+                
+                if (e.totalPaye === 0) {
+                  statut = "Impayé";
+                  statutColor = "bg-red-100 text-red-700";
+                } else if (e.totalPaye > 0 && e.totalPaye < e.totalDu) {
+                  statut = "Partiel";
+                  statutColor = "bg-amber-100 text-amber-700";
+                } else if (e.totalPaye >= e.totalDu) {
+                  statut = "Soldé";
+                  statutColor = "bg-emerald-100 text-emerald-700";
+                }
+                
+                const montantReste = Math.max(0, e.reste);
+                const hasEmail = e.parentEmail;
+                
+                return (
+                  <tr key={e.id} className="hover:bg-slate-50 transition cursor-pointer group" onClick={() => { setSelectedEleve(e); setShowDetailModal(true); }}>
+                    <td className="px-4 py-3 font-semibold text-slate-800">{e.nom}</td>
+                    <td className="px-4 py-3 text-slate-500">{e.classe}</td>
+                    <td className="px-4 py-3 text-right font-semibold text-slate-700">{e.totalDu.toLocaleString()} FCFA</td>
+                    <td className="px-4 py-3 text-right text-emerald-600 font-semibold">{e.totalPaye.toLocaleString()} FCFA</td>
+                    <td className={`px-4 py-3 text-right font-semibold ${montantReste === 0 ? 'text-emerald-600' : 'text-red-600'}`}>
+                      {montantReste.toLocaleString()} FCFA
+                    </td>
+                    <td className="px-4 py-3 text-center">
+                      <span className={`text-[10px] font-bold px-2 py-1 rounded-full ${statutColor}`}>{statut}</span>
+                    </td>
+                    <td className="px-4 py-3 text-center">
+                      {hasEmail ? (
+                        <span title={`Email: ${e.parentEmail}`} className="text-green-600">
+                          <Mail size={14} />
+                        </span>
+                      ) : (
+                        <span className="text-xs text-slate-400">—</span>
+                      )}
+                    </td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        </div>
+        {filtered.length === 0 && (
+          <div className="text-center py-12">
+            <div className="text-6xl mb-4">📭</div>
+            <p className="text-slate-400">Aucun élève trouvé</p>
+          </div>
+        )}
+      </div>
 
       {/* MODALS */}
       {showFraisModal && <FraisModal fraisList={fraisList} onSave={saveFrais} onClose={()=>setShowFraisModal(false)} />}
