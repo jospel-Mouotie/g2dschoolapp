@@ -222,6 +222,55 @@ export interface Pause {
   description: string;
 }
 
+export interface Devoir {
+  id: string;
+  titre: string;
+  description: string;
+  matiere: string;
+  classe: string;
+  professeur: string;
+  professeurId: number;
+  datePublication: string;
+  dateLimite: string;
+  fichiers: Fichier[];
+  type: "devoir" | "exercice" | "projet" | "examen";
+  coefficient?: number;
+  noteSur?: number;
+}
+
+export interface Fichier {
+  id: string;
+  nom: string;
+  url: string;
+  type: "pdf" | "image" | "doc" | "other";
+  taille: number;
+  dateUpload: string;
+}
+
+export interface Rendu {
+  id: string;
+  devoirId: string;
+  eleveId: number;
+  eleveNom: string;
+  dateRendu: string;
+  fichiers: Fichier[];
+  note?: number;
+  appreciation?: string;
+  corrige?: Fichier[];
+  estCorrige: boolean;
+}
+
+export interface Commentaire {
+  id: string;
+  devoirId: string;
+  eleveId: number;
+  eleveNom: string;
+  professeurId?: number;
+  professeurNom?: string;
+  contenu: string;
+  date: string;
+}
+
 // ========== FONCTIONS UTILITAIRES ==========
 function genererModulesParDefaut(matiere: string): Module[] {
   return [
@@ -246,15 +295,69 @@ function genererModulesParDefaut(matiere: string): Module[] {
   ];
 }
 
+// ========== GÉNÉRATION DES NOTES DE TEST ==========
+function genererNotesTest(): Record<string, Note[]> {
+  const notes: Record<string, Note[]> = {};
+  const classes = ["6A", "5B", "4A", "3A", "Seconde A", "Première A", "Terminale A"];
+  const matieres = ["maths", "francais", "anglais", "histgeo", "physique", "info", "eps", "education"];
+  const periodes = ["1er TRIMESTRE", "2ème TRIMESTRE", "3ème TRIMESTRE", "EXAMEN FINAL"];
+  const eleves = [
+    { id: 1, nom: "Jean Mbélé" },
+    { id: 2, nom: "Elise Nend" },
+    { id: 3, nom: "Dider Fongang" },
+    { id: 4, nom: "Émile Tamko" },
+    { id: 5, nom: "Nadia Ebwelle" }
+  ];
+
+  for (const classe of classes) {
+    for (const matiere of matieres) {
+      for (const periode of periodes) {
+        const key = `${classe}_${matiere}_${periode}`;
+        const notesList: Note[] = [];
+        
+        for (const eleve of eleves) {
+          // Générer des notes aléatoires réalistes
+          const eval1 = Math.random() > 0.1 ? Number((Math.random() * 20).toFixed(1)) : null;
+          const eval2 = Math.random() > 0.1 ? Number((Math.random() * 20).toFixed(1)) : null;
+          const moyenne = eval1 !== null && eval2 !== null 
+            ? Number(((eval1 + eval2) / 2).toFixed(1))
+            : eval1 !== null ? eval1 : eval2;
+          
+          let appreciation = "Non évalué";
+          if (moyenne !== null) {
+            if (moyenne >= 16) appreciation = "Excellent";
+            else if (moyenne >= 14) appreciation = "Très bien";
+            else if (moyenne >= 12) appreciation = "Bien";
+            else if (moyenne >= 10) appreciation = "Assez bien";
+            else if (moyenne >= 8) appreciation = "Passable";
+            else appreciation = "Insuffisant";
+          }
+          
+          notesList.push({
+            eleveId: eleve.id,
+            eval1,
+            eval2,
+            moyenne,
+            appreciation
+          });
+        }
+        notes[key] = notesList;
+      }
+    }
+  }
+  
+  return notes;
+}
+
 // ========== STORES ==========
 
 export function useElevesStore() {
   const initialEleves: Eleve[] = [
-    { id: 1, nom: "Jean Mbélé", classe: "6A", matricule: "9/02 410", statusColor: "bg-emerald-400", img: "https://images.unsplash.com/photo-1531384441138-2736e62e0919?w=100&h=100&fit=crop" },
-    { id: 2, nom: "Elise Nend", classe: "5B", matricule: "5/22,000", statusColor: "bg-teal-400", img: "https://images.unsplash.com/photo-1531123897727-8f129e16fd3c?w=100&h=100&fit=crop", selected: true },
-    { id: 3, nom: "Dider Fongang", classe: "4A", matricule: "8/163 410", statusColor: "bg-sky-400", img: "https://images.unsplash.com/photo-1506277886164-e25aa3f4ef7f?w=100&h=100&fit=crop" },
-    { id: 4, nom: "Émile Tamko", classe: "6A", matricule: "5/02,003", statusColor: "bg-indigo-400", img: "https://images.unsplash.com/photo-1566492031773-4f4e44671857?w=100&h=100&fit=crop" },
-    { id: 5, nom: "Nadia Ebwelle", classe: "Tle", matricule: "5/07/223", statusColor: "bg-amber-400", img: "https://images.unsplash.com/photo-1589156280159-27698a70f29e?w=100&h=100&fit=crop" },
+    { id: 1, nom: "Jean Mbélé", classe: "6A", matricule: "9/02 410", statusColor: "bg-emerald-400", img: "https://images.unsplash.com/photo-1531384441138-2736e62e0919?w=100&h=100&fit=crop", parentTelephone: "+237 612345678", parentEmail: "parent.jean@example.com" },
+    { id: 2, nom: "Elise Nend", classe: "5B", matricule: "5/22,000", statusColor: "bg-teal-400", img: "https://images.unsplash.com/photo-1531123897727-8f129e16fd3c?w=100&h=100&fit=crop", selected: true, parentTelephone: "+237 623456789", parentEmail: "parent.elise@example.com" },
+    { id: 3, nom: "Dider Fongang", classe: "4A", matricule: "8/163 410", statusColor: "bg-sky-400", img: "https://images.unsplash.com/photo-1506277886164-e25aa3f4ef7f?w=100&h=100&fit=crop", parentTelephone: "+237 634567890", parentEmail: "parent.dider@example.com" },
+    { id: 4, nom: "Émile Tamko", classe: "6A", matricule: "5/02,003", statusColor: "bg-indigo-400", img: "https://images.unsplash.com/photo-1566492031773-4f4e44671857?w=100&h=100&fit=crop", parentTelephone: "+237 645678901", parentEmail: "parent.emile@example.com" },
+    { id: 5, nom: "Nadia Ebwelle", classe: "Terminale A", matricule: "5/07/223", statusColor: "bg-amber-400", img: "https://images.unsplash.com/photo-1589156280159-27698a70f29e?w=100&h=100&fit=crop", parentTelephone: "+237 656789012", parentEmail: "parent.nadia@example.com" },
   ];
   return useIndexedDB("eleves", initialEleves);
 }
@@ -263,10 +366,10 @@ export function useEnseignantsStore() {
   const initialEnseignants: Enseignant[] = [
     { id: 1, name: "Dr. Kanga Martin", email: "martin.kanga@enspd.cm", phone: "+237 670 00 00 01", matieres: ["Maths", "Algorithmique"], classes: ["6A", "5B"], status: "Titulaire", photo: "https://images.unsplash.com/photo-1531384441138-2736e62e0919?w=100&h=100&fit=crop", enseignements: [] },
     { id: 2, name: "Mme Ngo Pauline", email: "pauline.ngo@enspd.cm", phone: "+237 690 00 00 02", matieres: ["Français", "Littérature"], classes: ["5B", "4A"], status: "Contractuelle", photo: "https://images.unsplash.com/photo-1531123897727-8f129e16fd3c?w=100&h=100&fit=crop", enseignements: [] },
-    { id: 3, name: "M. Fongang Didier", email: "didier.f@enspd.cm", phone: "+237 650 00 00 03", matieres: ["Anglais", "Business"], classes: ["Tle", "2nde"], status: "Titulaire", photo: "https://images.unsplash.com/photo-1506277886164-e25aa3f4ef7f?w=100&h=100&fit=crop", enseignements: [] },
+    { id: 3, name: "M. Fongang Didier", email: "didier.f@enspd.cm", phone: "+237 650 00 00 03", matieres: ["Anglais", "Business"], classes: ["Terminale A", "Seconde A"], status: "Titulaire", photo: "https://images.unsplash.com/photo-1506277886164-e25aa3f4ef7f?w=100&h=100&fit=crop", enseignements: [] },
     { id: 4, name: "M. Ibrahim Fofana", email: "i.fofana@enspd.cm", phone: "+237 677 88 99 04", matieres: ["Histoire-Géo"], classes: ["4A", "3A"], status: "Vacataire", photo: "https://images.unsplash.com/photo-1566492031773-4f4e44671857?w=100&h=100&fit=crop", enseignements: [] },
-    { id: 5, name: "Mme Djou Alice", email: "alice.djou@enspd.cm", phone: "+237 611 22 33 05", matieres: ["Physique", "Chimie"], classes: ["1ere", "Tle"], status: "Titulaire", photo: "https://images.unsplash.com/photo-1589156280159-27698a70f29e?w=100&h=100&fit=crop", enseignements: [] },
-    { id: 6, name: "M. Paul Kamga", email: "paul.k@enspd.cm", phone: "+237 644 55 66 06", matieres: ["Informatique"], classes: ["3A", "2nde"], status: "Contractuel", photo: "https://images.unsplash.com/photo-1507152832244-10d45c7eda57?w=100&h=100&fit=crop", enseignements: [] },
+    { id: 5, name: "Mme Djou Alice", email: "alice.djou@enspd.cm", phone: "+237 611 22 33 05", matieres: ["Physique", "Chimie"], classes: ["Première A", "Terminale A"], status: "Titulaire", photo: "https://images.unsplash.com/photo-1589156280159-27698a70f29e?w=100&h=100&fit=crop", enseignements: [] },
+    { id: 6, name: "M. Paul Kamga", email: "paul.k@enspd.cm", phone: "+237 644 55 66 06", matieres: ["Informatique"], classes: ["3A", "Seconde A"], status: "Contractuel", photo: "https://images.unsplash.com/photo-1507152832244-10d45c7eda57?w=100&h=100&fit=crop", enseignements: [] },
   ];
   return useIndexedDB("enseignants", initialEnseignants);
 }
@@ -309,14 +412,15 @@ export function useTransactionsStore() {
 }
 
 export function useNotesStore() {
-  const initialNotes: Record<string, Note[]> = {};
+  // Générer des données de test pour les notes
+  const initialNotes: Record<string, Note[]> = genererNotesTest();
   return useIndexedDB("notes", initialNotes);
 }
 
 export function useDocumentsStore() {
   const initialDocuments: Document[] = [
     { id: 1, nom: "Cours maths - Chapitre 3", type: "pdf", categorie: "cours", classe: "6A", matiere: "Maths", taille: "2.3 MB", date: "2025-03-15", url: "#", auteur: "M. Kanga" },
-    { id: 2, nom: "Épreuve Maths BAC 2024", type: "pdf", categorie: "anciennes-epreuves", classe: "Tle", matiere: "Maths", taille: "4.5 MB", date: "2024-06-10", url: "#", auteur: "Ministère" },
+    { id: 2, nom: "Épreuve Maths BAC 2024", type: "pdf", categorie: "anciennes-epreuves", classe: "Terminale A", matiere: "Maths", taille: "4.5 MB", date: "2024-06-10", url: "#", auteur: "Ministère" },
   ];
   return useIndexedDB("documents", initialDocuments);
 }
@@ -336,14 +440,14 @@ export function useSallesStore() {
 
 export function useMatieresStore() {
   const initialMatieres: Matiere[] = [
-    { id: "1", nom: "MATHÉMATIQUES", coefficient: 4, description: "Mathématiques générales" },
-    { id: "2", nom: "FRANÇAIS", coefficient: 3, description: "Langue française" },
-    { id: "3", nom: "ANGLAIS", coefficient: 2, description: "Langue anglaise" },
-    { id: "4", nom: "HISTOIRE-GÉOGRAPHIE", coefficient: 3, description: "Histoire et Géographie" },
-    { id: "5", nom: "PHYSIQUE-CHIMIE", coefficient: 5, description: "Sciences physiques" },
-    { id: "6", nom: "INFORMATIQUE", coefficient: 2, description: "Informatique" },
-    { id: "7", nom: "EPS", coefficient: 2, description: "Éducation physique" },
-    { id: "8", nom: "ÉDUCATION CIVIQUE", coefficient: 1, description: "Éducation civique" },
+    { id: "maths", nom: "MATHÉMATIQUES", coefficient: 4, description: "Mathématiques générales" },
+    { id: "francais", nom: "FRANÇAIS", coefficient: 3, description: "Langue française" },
+    { id: "anglais", nom: "ANGLAIS", coefficient: 2, description: "Langue anglaise" },
+    { id: "histgeo", nom: "HISTOIRE-GÉOGRAPHIE", coefficient: 3, description: "Histoire et Géographie" },
+    { id: "physique", nom: "PHYSIQUE-CHIMIE", coefficient: 5, description: "Sciences physiques" },
+    { id: "info", nom: "INFORMATIQUE", coefficient: 2, description: "Informatique" },
+    { id: "eps", nom: "EPS", coefficient: 2, description: "Éducation physique" },
+    { id: "education", nom: "ÉDUCATION CIVIQUE", coefficient: 1, description: "Éducation civique" },
   ];
   return useIndexedDB("matieres", initialMatieres);
 }
@@ -393,14 +497,14 @@ export function useClassesStore() {
 export function useEtablissementStore() {
   const initialEtablissement: Etablissement = {
     id: "1",
-    nom: "Lycee de DeidO",
+    nom: "Lycée de Deido",
     logo: "",
-    adresse: "BP : 6500 douala",
+    adresse: "BP : 6500 Douala",
     telephone: "65268234 / 695789136",
     email: "contact@lyceedeido.cm",
     anneeScolaire: "2026/2027",
-    region: "Litoral",
-    delegation: "DOUALA 5 EME",
+    region: "Littoral",
+    delegation: "DOUALA 5ÈME",
   };
   return useIndexedDB("etablissement", initialEtablissement);
 }
@@ -410,54 +514,4 @@ export function usePausesStore() {
     { id: "1", heureDebut: "12:00", heureFin: "14:00", description: "Pause déjeuner" },
   ];
   return useIndexedDB("pauses", initialPauses);
-}
-// lib/stores.ts - Ajouter ces interfaces
-
-export interface Devoir {
-  id: string;
-  titre: string;
-  description: string;
-  matiere: string;
-  classe: string;
-  professeur: string;
-  professeurId: number;
-  datePublication: string;
-  dateLimite: string;
-  fichiers: Fichier[];
-  type: "devoir" | "exercice" | "projet" | "examen";
-  coefficient?: number;
-  noteSur?: number;
-}
-
-export interface Fichier {
-  id: string;
-  nom: string;
-  url: string;
-  type: "pdf" | "image" | "doc" | "other";
-  taille: number;
-  dateUpload: string;
-}
-
-export interface Rendu {
-  id: string;
-  devoirId: string;
-  eleveId: number;
-  eleveNom: string;
-  dateRendu: string;
-  fichiers: Fichier[];
-  note?: number;
-  appreciation?: string;
-  corrige?: Fichier[];
-  estCorrige: boolean;
-}
-
-export interface Commentaire {
-  id: string;
-  devoirId: string;
-  eleveId: number;
-  eleveNom: string;
-  professeurId?: number;
-  professeurNom?: string;
-  contenu: string;
-  date: string;
 }
