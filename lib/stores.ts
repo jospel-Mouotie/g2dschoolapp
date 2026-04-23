@@ -271,81 +271,317 @@ export interface Commentaire {
   date: string;
 }
 
-// ========== FONCTIONS UTILITAIRES ==========
-function genererModulesParDefaut(matiere: string): Module[] {
-  return [
-    {
-      id: `mod-${Date.now()}-1`,
-      titre: "Introduction",
-      description: `Les bases de ${matiere}`,
-      chapitres: [
-        { id: `ch-${Date.now()}-1`, titre: "Chapitre 1 : Concepts fondamentaux", estFait: false, duree: 60 },
-        { id: `ch-${Date.now()}-2`, titre: "Chapitre 2 : Premières applications", estFait: false, duree: 90 },
-      ]
-    },
-    {
-      id: `mod-${Date.now()}-2`,
-      titre: "Approfondissement",
-      description: "Sujets avancés",
-      chapitres: [
-        { id: `ch-${Date.now()}-3`, titre: "Chapitre 3 : Théorie avancée", estFait: false, duree: 120 },
-        { id: `ch-${Date.now()}-4`, titre: "Chapitre 4 : Exercices pratiques", estFait: false, duree: 90 },
-      ]
-    }
-  ];
+// ========== FONCTION POUR CALCULER LA MOYENNE ==========
+function calculerMoyenne(e1: number | null, e2: number | null): number | null {
+  if (e1 !== null && e2 !== null) return Number(((e1 + e2) / 2).toFixed(1));
+  if (e1 !== null) return e1;
+  if (e2 !== null) return e2;
+  return null;
+}
+
+function getAppreciation(note: number | null): string {
+  if (note === null) return "Non évalué";
+  if (note >= 16) return "Excellent";
+  if (note >= 14) return "Très bien";
+  if (note >= 12) return "Bien";
+  if (note >= 10) return "Assez bien";
+  if (note >= 8) return "Passable";
+  return "Insuffisant";
 }
 
 // ========== GÉNÉRATION DES NOTES DE TEST ==========
 function genererNotesTest(): Record<string, Note[]> {
   const notes: Record<string, Note[]> = {};
-  const classes = ["6A", "5B", "4A", "3A", "Seconde A", "Première A", "Terminale A"];
-  const matieres = ["maths", "francais", "anglais", "histgeo", "physique", "info", "eps", "education"];
-  const periodes = ["1er TRIMESTRE", "2ème TRIMESTRE", "3ème TRIMESTRE", "EXAMEN FINAL"];
-  const eleves = [
-    { id: 1, nom: "Jean Mbélé" },
-    { id: 2, nom: "Elise Nend" },
-    { id: 3, nom: "Dider Fongang" },
-    { id: 4, nom: "Émile Tamko" },
-    { id: 5, nom: "Nadia Ebwelle" }
+  
+  // Classes avec leurs élèves
+  const classesData: Record<string, { id: number; nom: string }[]> = {
+    "6A": [
+      { id: 1, nom: "Jean Mbélé" },
+      { id: 4, nom: "Émile Tamko" }
+    ],
+    "5B": [
+      { id: 2, nom: "Elise Nend" }
+    ],
+    "4A": [
+      { id: 3, nom: "Dider Fongang" }
+    ],
+    "Terminale A": [
+      { id: 5, nom: "Nadia Ebwelle" }
+    ]
+  };
+
+  // Matières avec leurs IDs
+  const matieresList = [
+    { id: "maths", nom: "MATHÉMATIQUES", coefficient: 4 },
+    { id: "francais", nom: "FRANÇAIS", coefficient: 3 },
+    { id: "anglais", nom: "ANGLAIS", coefficient: 2 },
+    { id: "histgeo", nom: "HISTOIRE-GÉOGRAPHIE", coefficient: 3 },
+    { id: "physique", nom: "PHYSIQUE-CHIMIE", coefficient: 5 },
+    { id: "info", nom: "INFORMATIQUE", coefficient: 2 },
+    { id: "eps", nom: "EPS", coefficient: 2 },
+    { id: "education", nom: "ÉDUCATION CIVIQUE", coefficient: 1 }
   ];
 
-  for (const classe of classes) {
-    for (const matiere of matieres) {
+  const periodes = ["1er TRIMESTRE", "2ème TRIMESTRE", "3ème TRIMESTRE"];
+
+  // Données de notes pour chaque élève, matière et période
+  const notesData: Record<string, Record<string, Record<string, { eval1: number | null; eval2: number | null }>>> = {
+    // Jean Mbélé (6A)
+    "1": {
+      "maths": {
+        "1er TRIMESTRE": { eval1: 12, eval2: 14 },
+        "2ème TRIMESTRE": { eval1: 13, eval2: 15 },
+        "3ème TRIMESTRE": { eval1: 14, eval2: 16 }
+      },
+      "francais": {
+        "1er TRIMESTRE": { eval1: 11, eval2: 13 },
+        "2ème TRIMESTRE": { eval1: 12, eval2: 14 },
+        "3ème TRIMESTRE": { eval1: 13, eval2: 15 }
+      },
+      "anglais": {
+        "1er TRIMESTRE": { eval1: 10, eval2: 12 },
+        "2ème TRIMESTRE": { eval1: 11, eval2: 13 },
+        "3ème TRIMESTRE": { eval1: 12, eval2: 14 }
+      },
+      "histgeo": {
+        "1er TRIMESTRE": { eval1: 9, eval2: 11 },
+        "2ème TRIMESTRE": { eval1: 10, eval2: 12 },
+        "3ème TRIMESTRE": { eval1: 11, eval2: 13 }
+      },
+      "physique": {
+        "1er TRIMESTRE": { eval1: 13, eval2: 15 },
+        "2ème TRIMESTRE": { eval1: 14, eval2: 16 },
+        "3ème TRIMESTRE": { eval1: 15, eval2: 17 }
+      },
+      "info": {
+        "1er TRIMESTRE": { eval1: 14, eval2: 16 },
+        "2ème TRIMESTRE": { eval1: 15, eval2: 17 },
+        "3ème TRIMESTRE": { eval1: 16, eval2: 18 }
+      },
+      "eps": {
+        "1er TRIMESTRE": { eval1: 15, eval2: 17 },
+        "2ème TRIMESTRE": { eval1: 16, eval2: 18 },
+        "3ème TRIMESTRE": { eval1: 17, eval2: 19 }
+      },
+      "education": {
+        "1er TRIMESTRE": { eval1: 12, eval2: 14 },
+        "2ème TRIMESTRE": { eval1: 13, eval2: 15 },
+        "3ème TRIMESTRE": { eval1: 14, eval2: 16 }
+      }
+    },
+    // Émile Tamko (6A)
+    "4": {
+      "maths": {
+        "1er TRIMESTRE": { eval1: 8, eval2: 10 },
+        "2ème TRIMESTRE": { eval1: 9, eval2: 11 },
+        "3ème TRIMESTRE": { eval1: 10, eval2: 12 }
+      },
+      "francais": {
+        "1er TRIMESTRE": { eval1: 7, eval2: 9 },
+        "2ème TRIMESTRE": { eval1: 8, eval2: 10 },
+        "3ème TRIMESTRE": { eval1: 9, eval2: 11 }
+      },
+      "anglais": {
+        "1er TRIMESTRE": { eval1: 6, eval2: 8 },
+        "2ème TRIMESTRE": { eval1: 7, eval2: 9 },
+        "3ème TRIMESTRE": { eval1: 8, eval2: 10 }
+      },
+      "histgeo": {
+        "1er TRIMESTRE": { eval1: 5, eval2: 7 },
+        "2ème TRIMESTRE": { eval1: 6, eval2: 8 },
+        "3ème TRIMESTRE": { eval1: 7, eval2: 9 }
+      },
+      "physique": {
+        "1er TRIMESTRE": { eval1: 9, eval2: 11 },
+        "2ème TRIMESTRE": { eval1: 10, eval2: 12 },
+        "3ème TRIMESTRE": { eval1: 11, eval2: 13 }
+      },
+      "info": {
+        "1er TRIMESTRE": { eval1: 10, eval2: 12 },
+        "2ème TRIMESTRE": { eval1: 11, eval2: 13 },
+        "3ème TRIMESTRE": { eval1: 12, eval2: 14 }
+      },
+      "eps": {
+        "1er TRIMESTRE": { eval1: 11, eval2: 13 },
+        "2ème TRIMESTRE": { eval1: 12, eval2: 14 },
+        "3ème TRIMESTRE": { eval1: 13, eval2: 15 }
+      },
+      "education": {
+        "1er TRIMESTRE": { eval1: 8, eval2: 10 },
+        "2ème TRIMESTRE": { eval1: 9, eval2: 11 },
+        "3ème TRIMESTRE": { eval1: 10, eval2: 12 }
+      }
+    },
+    // Elise Nend (5B)
+    "2": {
+      "maths": {
+        "1er TRIMESTRE": { eval1: 14, eval2: 16 },
+        "2ème TRIMESTRE": { eval1: 15, eval2: 17 },
+        "3ème TRIMESTRE": { eval1: 16, eval2: 18 }
+      },
+      "francais": {
+        "1er TRIMESTRE": { eval1: 13, eval2: 15 },
+        "2ème TRIMESTRE": { eval1: 14, eval2: 16 },
+        "3ème TRIMESTRE": { eval1: 15, eval2: 17 }
+      },
+      "anglais": {
+        "1er TRIMESTRE": { eval1: 12, eval2: 14 },
+        "2ème TRIMESTRE": { eval1: 13, eval2: 15 },
+        "3ème TRIMESTRE": { eval1: 14, eval2: 16 }
+      },
+      "histgeo": {
+        "1er TRIMESTRE": { eval1: 11, eval2: 13 },
+        "2ème TRIMESTRE": { eval1: 12, eval2: 14 },
+        "3ème TRIMESTRE": { eval1: 13, eval2: 15 }
+      },
+      "physique": {
+        "1er TRIMESTRE": { eval1: 15, eval2: 17 },
+        "2ème TRIMESTRE": { eval1: 16, eval2: 18 },
+        "3ème TRIMESTRE": { eval1: 17, eval2: 19 }
+      },
+      "info": {
+        "1er TRIMESTRE": { eval1: 16, eval2: 18 },
+        "2ème TRIMESTRE": { eval1: 17, eval2: 19 },
+        "3ème TRIMESTRE": { eval1: 18, eval2: 20 }
+      },
+      "eps": {
+        "1er TRIMESTRE": { eval1: 14, eval2: 16 },
+        "2ème TRIMESTRE": { eval1: 15, eval2: 17 },
+        "3ème TRIMESTRE": { eval1: 16, eval2: 18 }
+      },
+      "education": {
+        "1er TRIMESTRE": { eval1: 13, eval2: 15 },
+        "2ème TRIMESTRE": { eval1: 14, eval2: 16 },
+        "3ème TRIMESTRE": { eval1: 15, eval2: 17 }
+      }
+    },
+    // Dider Fongang (4A)
+    "3": {
+      "maths": {
+        "1er TRIMESTRE": { eval1: 6, eval2: 8 },
+        "2ème TRIMESTRE": { eval1: 7, eval2: 9 },
+        "3ème TRIMESTRE": { eval1: 8, eval2: 10 }
+      },
+      "francais": {
+        "1er TRIMESTRE": { eval1: 5, eval2: 7 },
+        "2ème TRIMESTRE": { eval1: 6, eval2: 8 },
+        "3ème TRIMESTRE": { eval1: 7, eval2: 9 }
+      },
+      "anglais": {
+        "1er TRIMESTRE": { eval1: 4, eval2: 6 },
+        "2ème TRIMESTRE": { eval1: 5, eval2: 7 },
+        "3ème TRIMESTRE": { eval1: 6, eval2: 8 }
+      },
+      "histgeo": {
+        "1er TRIMESTRE": { eval1: 3, eval2: 5 },
+        "2ème TRIMESTRE": { eval1: 4, eval2: 6 },
+        "3ème TRIMESTRE": { eval1: 5, eval2: 7 }
+      },
+      "physique": {
+        "1er TRIMESTRE": { eval1: 7, eval2: 9 },
+        "2ème TRIMESTRE": { eval1: 8, eval2: 10 },
+        "3ème TRIMESTRE": { eval1: 9, eval2: 11 }
+      },
+      "info": {
+        "1er TRIMESTRE": { eval1: 8, eval2: 10 },
+        "2ème TRIMESTRE": { eval1: 9, eval2: 11 },
+        "3ème TRIMESTRE": { eval1: 10, eval2: 12 }
+      },
+      "eps": {
+        "1er TRIMESTRE": { eval1: 9, eval2: 11 },
+        "2ème TRIMESTRE": { eval1: 10, eval2: 12 },
+        "3ème TRIMESTRE": { eval1: 11, eval2: 13 }
+      },
+      "education": {
+        "1er TRIMESTRE": { eval1: 6, eval2: 8 },
+        "2ème TRIMESTRE": { eval1: 7, eval2: 9 },
+        "3ème TRIMESTRE": { eval1: 8, eval2: 10 }
+      }
+    },
+    // Nadia Ebwelle (Terminale A)
+    "5": {
+      "maths": {
+        "1er TRIMESTRE": { eval1: 17, eval2: 19 },
+        "2ème TRIMESTRE": { eval1: 18, eval2: 19 },
+        "3ème TRIMESTRE": { eval1: 19, eval2: 20 }
+      },
+      "francais": {
+        "1er TRIMESTRE": { eval1: 16, eval2: 18 },
+        "2ème TRIMESTRE": { eval1: 17, eval2: 19 },
+        "3ème TRIMESTRE": { eval1: 18, eval2: 19 }
+      },
+      "anglais": {
+        "1er TRIMESTRE": { eval1: 15, eval2: 17 },
+        "2ème TRIMESTRE": { eval1: 16, eval2: 18 },
+        "3ème TRIMESTRE": { eval1: 17, eval2: 19 }
+      },
+      "histgeo": {
+        "1er TRIMESTRE": { eval1: 14, eval2: 16 },
+        "2ème TRIMESTRE": { eval1: 15, eval2: 17 },
+        "3ème TRIMESTRE": { eval1: 16, eval2: 18 }
+      },
+      "physique": {
+        "1er TRIMESTRE": { eval1: 18, eval2: 19 },
+        "2ème TRIMESTRE": { eval1: 18, eval2: 20 },
+        "3ème TRIMESTRE": { eval1: 19, eval2: 20 }
+      },
+      "info": {
+        "1er TRIMESTRE": { eval1: 17, eval2: 19 },
+        "2ème TRIMESTRE": { eval1: 18, eval2: 20 },
+        "3ème TRIMESTRE": { eval1: 19, eval2: 20 }
+      },
+      "eps": {
+        "1er TRIMESTRE": { eval1: 16, eval2: 18 },
+        "2ème TRIMESTRE": { eval1: 17, eval2: 19 },
+        "3ème TRIMESTRE": { eval1: 18, eval2: 19 }
+      },
+      "education": {
+        "1er TRIMESTRE": { eval1: 15, eval2: 17 },
+        "2ème TRIMESTRE": { eval1: 16, eval2: 18 },
+        "3ème TRIMESTRE": { eval1: 17, eval2: 19 }
+      }
+    }
+  };
+
+  // Générer les notes pour chaque classe, matière et période
+  for (const [classe, eleves] of Object.entries(classesData)) {
+    for (const matiere of matieresList) {
       for (const periode of periodes) {
-        const key = `${classe}_${matiere}_${periode}`;
+        const key = `${classe}_${matiere.id}_${periode}`;
         const notesList: Note[] = [];
-        
+
         for (const eleve of eleves) {
-          // Générer des notes aléatoires réalistes
-          const eval1 = Math.random() > 0.1 ? Number((Math.random() * 20).toFixed(1)) : null;
-          const eval2 = Math.random() > 0.1 ? Number((Math.random() * 20).toFixed(1)) : null;
-          const moyenne = eval1 !== null && eval2 !== null 
-            ? Number(((eval1 + eval2) / 2).toFixed(1))
-            : eval1 !== null ? eval1 : eval2;
+          const notesEleve = notesData[eleve.id.toString()]?.[matiere.id]?.[periode];
           
-          let appreciation = "Non évalué";
-          if (moyenne !== null) {
-            if (moyenne >= 16) appreciation = "Excellent";
-            else if (moyenne >= 14) appreciation = "Très bien";
-            else if (moyenne >= 12) appreciation = "Bien";
-            else if (moyenne >= 10) appreciation = "Assez bien";
-            else if (moyenne >= 8) appreciation = "Passable";
-            else appreciation = "Insuffisant";
+          if (notesEleve) {
+            const { eval1, eval2 } = notesEleve;
+            const moyenne = calculerMoyenne(eval1, eval2);
+            const appreciation = getAppreciation(moyenne);
+
+            notesList.push({
+              eleveId: eleve.id,
+              eval1,
+              eval2,
+              moyenne,
+              appreciation
+            });
+          } else {
+            // Si pas de données, mettre des valeurs par défaut
+            notesList.push({
+              eleveId: eleve.id,
+              eval1: null,
+              eval2: null,
+              moyenne: null,
+              appreciation: "Non évalué"
+            });
           }
-          
-          notesList.push({
-            eleveId: eleve.id,
-            eval1,
-            eval2,
-            moyenne,
-            appreciation
-          });
         }
+
         notes[key] = notesList;
       }
     }
   }
-  
+
   return notes;
 }
 
@@ -353,11 +589,11 @@ function genererNotesTest(): Record<string, Note[]> {
 
 export function useElevesStore() {
   const initialEleves: Eleve[] = [
-    { id: 1, nom: "Jean Mbélé", classe: "6A", matricule: "9/02 410", statusColor: "bg-emerald-400", img: "https://images.unsplash.com/photo-1531384441138-2736e62e0919?w=100&h=100&fit=crop", parentTelephone: "+237 612345678", parentEmail: "parent.jean@example.com" },
-    { id: 2, nom: "Elise Nend", classe: "5B", matricule: "5/22,000", statusColor: "bg-teal-400", img: "https://images.unsplash.com/photo-1531123897727-8f129e16fd3c?w=100&h=100&fit=crop", selected: true, parentTelephone: "+237 623456789", parentEmail: "parent.elise@example.com" },
-    { id: 3, nom: "Dider Fongang", classe: "4A", matricule: "8/163 410", statusColor: "bg-sky-400", img: "https://images.unsplash.com/photo-1506277886164-e25aa3f4ef7f?w=100&h=100&fit=crop", parentTelephone: "+237 634567890", parentEmail: "parent.dider@example.com" },
-    { id: 4, nom: "Émile Tamko", classe: "6A", matricule: "5/02,003", statusColor: "bg-indigo-400", img: "https://images.unsplash.com/photo-1566492031773-4f4e44671857?w=100&h=100&fit=crop", parentTelephone: "+237 645678901", parentEmail: "parent.emile@example.com" },
-    { id: 5, nom: "Nadia Ebwelle", classe: "Terminale A", matricule: "5/07/223", statusColor: "bg-amber-400", img: "https://images.unsplash.com/photo-1589156280159-27698a70f29e?w=100&h=100&fit=crop", parentTelephone: "+237 656789012", parentEmail: "parent.nadia@example.com" },
+    { id: 1, nom: "Jean Mbélé", classe: "6A", matricule: "9/02 410", statusColor: "bg-emerald-400", img: "https://images.unsplash.com/photo-1531384441138-2736e62e0919?w=100&h=100&fit=crop", parentTelephone: "+237 612345678", parentEmail: "parent.jean@example.com", dateNaissance: "2012-05-15", lieuNaissance: "Douala" },
+    { id: 2, nom: "Elise Nend", classe: "5B", matricule: "5/22,000", statusColor: "bg-teal-400", img: "https://images.unsplash.com/photo-1531123897727-8f129e16fd3c?w=100&h=100&fit=crop", selected: true, parentTelephone: "+237 623456789", parentEmail: "parent.elise@example.com", dateNaissance: "2011-08-22", lieuNaissance: "Yaoundé" },
+    { id: 3, nom: "Dider Fongang", classe: "4A", matricule: "8/163 410", statusColor: "bg-sky-400", img: "https://images.unsplash.com/photo-1506277886164-e25aa3f4ef7f?w=100&h=100&fit=crop", parentTelephone: "+237 634567890", parentEmail: "parent.dider@example.com", dateNaissance: "2010-03-10", lieuNaissance: "Bafoussam" },
+    { id: 4, nom: "Émile Tamko", classe: "6A", matricule: "5/02,003", statusColor: "bg-indigo-400", img: "https://images.unsplash.com/photo-1566492031773-4f4e44671857?w=100&h=100&fit=crop", parentTelephone: "+237 645678901", parentEmail: "parent.emile@example.com", dateNaissance: "2012-11-30", lieuNaissance: "Douala" },
+    { id: 5, nom: "Nadia Ebwelle", classe: "Terminale A", matricule: "5/07/223", statusColor: "bg-amber-400", img: "https://images.unsplash.com/photo-1589156280159-27698a70f29e?w=100&h=100&fit=crop", parentTelephone: "+237 656789012", parentEmail: "parent.nadia@example.com", dateNaissance: "2006-07-18", lieuNaissance: "Yaoundé" },
   ];
   return useIndexedDB("eleves", initialEleves);
 }
@@ -436,6 +672,29 @@ export function useSallesStore() {
     { id: "7", nom: "Terrain", capacite: 50, batiment: "Extérieur", equipements: [] },
   ];
   return useIndexedDB("salles", initialSalles);
+}
+
+function genererModulesParDefaut(matiere: string): Module[] {
+  return [
+    {
+      id: `mod-${Date.now()}-1`,
+      titre: "Introduction",
+      description: `Les bases de ${matiere}`,
+      chapitres: [
+        { id: `ch-${Date.now()}-1`, titre: "Chapitre 1 : Concepts fondamentaux", estFait: false, duree: 60 },
+        { id: `ch-${Date.now()}-2`, titre: "Chapitre 2 : Premières applications", estFait: false, duree: 90 },
+      ]
+    },
+    {
+      id: `mod-${Date.now()}-2`,
+      titre: "Approfondissement",
+      description: "Sujets avancés",
+      chapitres: [
+        { id: `ch-${Date.now()}-3`, titre: "Chapitre 3 : Théorie avancée", estFait: false, duree: 120 },
+        { id: `ch-${Date.now()}-4`, titre: "Chapitre 4 : Exercices pratiques", estFait: false, duree: 90 },
+      ]
+    }
+  ];
 }
 
 export function useMatieresStore() {
