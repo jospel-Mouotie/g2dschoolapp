@@ -12,7 +12,7 @@ import {
 } from "lucide-react";
 import {
   useElevesStore, useNotesStore, useEnseignantsStore,
-  useEtablissementStore, Eleve, Etablissement
+  useEtablissementStore, useCoursStore, Eleve, Etablissement
 } from "@/lib/stores";
 import * as XLSX from "xlsx";
 
@@ -459,7 +459,6 @@ function buildMessageBulletin(
 }
 
 // ─── Modal d'envoi (unifié) ───────────────────────────────────────────────────
-// ─── Modal d'envoi (unifié) ───────────────────────────────────────────────────
 
 function EnvoiModal({
   eleve,
@@ -507,7 +506,6 @@ function EnvoiModal({
 
   const currentMsg = typeEnvoi === "matiere" ? msgMatiere : msgBulletin;
 
-  // ✅ Fonction handleWhatsApp - Envoi via WhatsApp
   const handleWhatsApp = () => {
     if (!phone) {
       setErrorMsg("Veuillez saisir le numéro de téléphone du parent");
@@ -534,7 +532,6 @@ function EnvoiModal({
     setTimeout(() => setSuccess(false), 3000);
   };
 
-  // ✅ Fonction handleSend - Envoi par Email via API
   const handleSend = async () => {
     if (!email) {
       setErrorMsg("Veuillez saisir l'email du parent");
@@ -585,7 +582,6 @@ function EnvoiModal({
   return (
     <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4">
       <div className="bg-white rounded-2xl w-full max-w-2xl shadow-2xl overflow-hidden">
-        {/* Header */}
         <div className="bg-gradient-to-r from-blue-600 to-indigo-600 p-5 text-white">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-3">
@@ -606,7 +602,6 @@ function EnvoiModal({
         </div>
 
         <div className="p-5">
-          {/* Type d'envoi */}
           <div className="mb-4">
             <p className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Type d'envoi</p>
             <div className="flex gap-2">
@@ -635,7 +630,6 @@ function EnvoiModal({
             </div>
           </div>
 
-          {/* Coordonnées du parent */}
           <div className="bg-gradient-to-r from-slate-50 to-white rounded-xl p-4 mb-5 border border-slate-200">
             <p className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-3 flex items-center gap-2">
               <UserCheck size={14} /> Coordonnées du parent
@@ -666,7 +660,6 @@ function EnvoiModal({
             </div>
           </div>
 
-          {/* Aperçu du message */}
           <div className="mb-4">
             <p className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Aperçu du message</p>
             <div className="bg-slate-50 border border-slate-200 rounded-xl p-3 max-h-[200px] overflow-y-auto">
@@ -681,7 +674,6 @@ function EnvoiModal({
             </div>
           </div>
 
-          {/* Messages d'erreur et succès */}
           {errorMsg && (
             <div className="flex items-center gap-2 mt-3 bg-red-50 border border-red-200 rounded-xl px-4 py-2.5 text-red-700 text-sm">
               <AlertCircle size={16} />
@@ -696,7 +688,6 @@ function EnvoiModal({
             </div>
           )}
 
-          {/* Boutons d'action */}
           <div className="flex gap-3 mt-4">
             <button onClick={onClose} className="flex-1 py-2.5 border border-slate-200 rounded-xl text-sm text-slate-600 hover:bg-slate-50 transition">
               Annuler
@@ -727,7 +718,8 @@ function EnvoiModal({
     </div>
   );
 }
-//Modal d'envoi groupé à tous les parents ──────────────────────────────────
+
+// ─── Modal d'envoi groupé ─────────────────────────────────────────────────────
 
 function EnvoiGroupeModal({
   eleves,
@@ -902,195 +894,327 @@ function EnvoiGroupeModal({
     </div>
   );
 }
-
-// ─── Bulletin Modal (version imprimable) ──────────────────────────────────────
+// ─── Bulletin Modal (version professionnelle format A4) ───────────────────────
 
 function BulletinModal({
-  eleve, allNotes, classe, periode, onClose, elevesList, enseignants, etablissement,
+  eleve, allNotes, classe, periode, onClose, elevesList, enseignants, etablissement, cours
 }: any) {
   const matieresAvecNotes = useMemo(() => {
     return matieres.map((m) => {
       const key = `${classe}_${m.id}_${periode}`;
       const notes = allNotes[key] || [];
       const noteData = notes.find((n: NoteComplete) => n.eleveId === eleve.id);
-      return { ...m, eval1: noteData?.eval1 ?? null, eval2: noteData?.eval2 ?? null, moyenne: noteData?.moyenne ?? null };
+      
+      // Trouver le professeur de cette matière
+      const professeur = cours?.find((c: any) => 
+        c.classe === classe && c.matiere.toUpperCase() === m.nom
+      )?.professeur || "";
+// Calculer le rang dans la matière
+// Calculer le rang dans la matière
+// Calculer le rang dans la matière
+const toutesNotesMatiere = elevesList.map((e: Eleve) => {
+  const noteMatiere = (allNotes[key] || []).find((n: NoteComplete) => n.eleveId === e.id);
+  return { eleveId: e.id, moyenne: noteMatiere?.moyenne ?? 0 };
+}).sort((a: { eleveId: number; moyenne: number }, b: { eleveId: number; moyenne: number }) => b.moyenne - a.moyenne);
+
+const rangMatiere = toutesNotesMatiere.findIndex((n: { eleveId: number; moyenne: number }) => n.eleveId === eleve.id) + 1;
+      
+      return { 
+        ...m, 
+        eval1: noteData?.eval1 ?? null, 
+        eval2: noteData?.eval2 ?? null, 
+        moyenne: noteData?.moyenne ?? null,
+        professeur,
+        rangMatiere: rangMatiere > 0 && noteData?.moyenne !== null ? rangMatiere : null
+      };
     });
-  }, [eleve.id, classe, periode, allNotes]);
+  }, [eleve.id, classe, periode, allNotes, elevesList, cours]);
 
   const professeurPrincipal = getProfesseurPrincipal(classe, enseignants);
+  const annee = etablissement?.anneeScolaire || "2024/2025";
+  const nomEtab = etablissement?.nom || "LYCEE DE DEIDO";
+  const adresse = etablissement?.adresse || "BP : 6500 Douala";
+  const telephone = etablissement?.telephone || "65268234 / 695789136";
+  const region = etablissement?.region || "LITORAL";
+  const delegation = etablissement?.delegation || "DOUALA 5 EME";
+  const logoUrl = etablissement?.logo || "";
 
-  const resultats = useMemo(() => {
-    let totalPoints = 0, totalCoef = 0;
+  // Calcul des totaux et moyenne générale
+  const { totalCoef, totalPoints, moyenneGenerale, rang } = useMemo(() => {
+    let totalPointsCalc = 0;
+    let totalCoefCalc = 0;
     matieresAvecNotes.forEach((m: any) => {
-      if (m.moyenne !== null) { totalPoints += m.moyenne * m.coefficient; totalCoef += m.coefficient; }
+      if (m.moyenne !== null && m.moyenne > 0) {
+        totalPointsCalc += m.moyenne * m.coefficient;
+        totalCoefCalc += m.coefficient;
+      }
     });
-    const moyenneGenerale = totalCoef > 0 ? (totalPoints / totalCoef).toFixed(2) : "N/A";
-    const rang = calculerRang(eleve.id, elevesList, allNotes, periode, classe);
-    const moyenneClasse = calculerMoyenneClasse(elevesList, allNotes, periode, classe);
-    let best = 0, worst = 20;
-    for (const e of elevesList) {
-      const moy = calculerMoyenneGeneraleEleve(e.id, allNotes, periode, classe);
-      if (moy > best) best = moy;
-      if (moy < worst && moy > 0) worst = moy;
-    }
-    return { moyenneGenerale, rang, moyenneClasse: moyenneClasse.toFixed(2), meilleureMoyenne: best.toFixed(2), pireMoyenne: worst.toFixed(2), effectif: elevesList.length };
+    const moyGen = totalCoefCalc > 0 ? (totalPointsCalc / totalCoefCalc) : 0;
+    const rangCalc = calculerRang(eleve.id, elevesList, allNotes, periode, classe);
+    return { totalCoef: totalCoefCalc, totalPoints: totalPointsCalc, moyenneGenerale: moyGen, rang: rangCalc };
   }, [matieresAvecNotes, eleve.id, classe, periode, allNotes, elevesList]);
 
+  // Calcul des moyennes de classe, meilleure et pire
+  const { moyenneClasse, meilleureMoyenne, meilleurEleveNom, pireMoyenne, pireEleveNom } = useMemo(() => {
+    let totalMoyennes = 0;
+    let meilleure = 0, pire = 20;
+    let meilleurNom = "", pireNom = "";
+    
+    for (const e of elevesList) {
+      let total = 0, coef = 0;
+      for (const m of matieres) {
+        const key = `${classe}_${m.id}_${periode}`;
+        const note = (allNotes[key] || []).find((n: NoteComplete) => n.eleveId === e.id);
+        if (note && note.moyenne !== null && note.moyenne > 0) {
+          total += note.moyenne * m.coefficient;
+          coef += m.coefficient;
+        }
+      }
+      const moy = coef > 0 ? total / coef : 0;
+      totalMoyennes += moy;
+      if (moy > meilleure) {
+        meilleure = moy;
+        meilleurNom = e.nom;
+      }
+      if (moy < pire && moy > 0) {
+        pire = moy;
+        pireNom = e.nom;
+      }
+    }
+    const moyClasse = elevesList.length > 0 ? totalMoyennes / elevesList.length : 0;
+    return { 
+      moyenneClasse: moyClasse, 
+      meilleureMoyenne: meilleure, 
+      meilleurEleveNom: meilleurNom,
+      pireMoyenne: pire,
+      pireEleveNom: pireNom
+    };
+  }, [elevesList, classe, periode, allNotes]);
+
+  // Déterminer les appréciations
+  const appreciationGenerale = useMemo(() => {
+    if (moyenneGenerale >= 16) return "Excellent";
+    if (moyenneGenerale >= 14) return "Très bien";
+    if (moyenneGenerale >= 12) return "Bien";
+    if (moyenneGenerale >= 10) return "Assez bien";
+    if (moyenneGenerale >= 8) return "Passable";
+    return "Insuffisant";
+  }, [moyenneGenerale]);
+
   const handlePrint = () => setTimeout(() => window.print(), 100);
-  const matieresReussies = matieresAvecNotes.filter((m: any) => m.moyenne !== null && m.moyenne >= 10).length;
-  const tauxReussite = matieresAvecNotes.filter((m: any) => m.moyenne !== null).length > 0
-    ? Math.round((matieresReussies / matieresAvecNotes.filter((m: any) => m.moyenne !== null).length) * 100)
-    : 0;
+
+  // Déterminer les cases à cocher
+  const isFelicitations = moyenneGenerale >= 15;
+  const isEncouragement = moyenneGenerale >= 12 && moyenneGenerale < 15;
+  const isSatisfaisant = moyenneGenerale >= 10 && moyenneGenerale < 12;
+  const isPeutMieuxFaire = moyenneGenerale >= 8 && moyenneGenerale < 10;
+  const isInsuffisant = moyenneGenerale < 8;
 
   return (
     <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4 print:p-0 print:bg-white">
-      <div className="bg-white rounded-xl max-w-5xl w-full max-h-[95vh] overflow-y-auto shadow-2xl print:shadow-none print:max-h-none print:overflow-visible">
-        <div className="p-6 print:p-4" style={{ fontFamily: "'Times New Roman', Times, serif" }}>
-          {/* EN-TÊTE OFFICIEL */}
-          <div className="text-center border-b-2 border-black pb-4 mb-4">
+      <div className="bg-white w-full max-w-4xl shadow-2xl print:shadow-none print:max-w-none" style={{ fontFamily: "'Times New Roman', Times, serif" }}>
+        <div className="p-6 print:p-4">
+          
+          {/* ==================== EN-TÊTE OFFICIEL ==================== */}
+          <div className="text-center border-b-2 border-black pb-2 mb-3">
             <div className="flex justify-between items-start">
-              <div className="text-left text-xs leading-tight">
+              <div className="text-left text-[10px] leading-tight w-1/4">
                 <p className="font-bold">REPUBLIQUE DU CAMEROUN</p>
-                <p>Paix-Travail-Patrie</p>
+                <p>Paix - Travail - Patrie</p>
               </div>
-              <div className="text-center">
-                <p className="text-xs font-bold">MINISTERE DES ENSEIGNEMENTS SECONDAIRES</p>
-                <p className="text-xs">DELEGATION REGIONALE DU {etablissement?.region || "CENTRE"}</p>
-                <p className="text-xs">DELEGATION DEPARTEMENTALE DU {etablissement?.delegation || "MFOUNDI"}</p>
+              <div className="text-center w-2/4">
+                <p className="text-[9px] font-bold">MINISTERE DES ENSEIGNEMENTS SECONDAIRES</p>
+                <p className="text-[8px]">DELEGATION REGIONALE DU {region}</p>
+                <p className="text-[8px]">DELEGATION DEPARTEMENTALE DU {delegation}</p>
+                <p className="text-xs font-bold mt-1">{nomEtab}</p>
+                <p className="text-[8px]">{adresse}</p>
+                <p className="text-[8px]">📞 {telephone}</p>
               </div>
-              <div className="text-right text-xs">
-                {etablissement?.logo ? (
-                  <img src={etablissement.logo} className="w-16 h-16 object-contain" alt="Logo" />
+              <div className="text-right w-1/4">
+                {logoUrl ? (
+                  <img src={logoUrl} alt="Logo" className="w-14 h-14 object-contain ml-auto" />
                 ) : (
-                  <div className="w-16 h-16 border border-black flex items-center justify-center text-[10px]">LOGO</div>
+                  <div className="w-14 h-14 border border-black flex items-center justify-center text-[8px] ml-auto">LOGO</div>
                 )}
               </div>
             </div>
             <div className="mt-2">
-              <h2 className="text-xl font-bold uppercase">{etablissement?.nom || "LYCEE GANALS"}</h2>
-              <p className="text-[10px]">{etablissement?.adresse || "BP : 6500 Yaoundé"}</p>
-              <p className="text-[10px]">TEL : {etablissement?.telephone || "65268234 / 695789136"}</p>
-              <p className="text-[10px]">Email : {etablissement?.email || "contact@ecole.cm"}</p>
-            </div>
-            <div className="text-center mt-3">
-              <h3 className="text-md font-bold uppercase">BULLETIN DE NOTES DU {periode}</h3>
-              <p className="text-[10px] text-slate-500 mt-1">Année scolaire {etablissement?.anneeScolaire || "2024/2025"}</p>
+              <h2 className="text-sm font-bold uppercase">BULLETIN DE NOTES</h2>
+              <p className="text-[10px] font-semibold mt-0.5">{periode}</p>
+              <p className="text-[9px]">Année scolaire {annee}</p>
             </div>
           </div>
 
-          {/* INFOS ÉLÈVE */}
-          <div className="grid grid-cols-2 gap-x-4 gap-y-1 text-sm mb-4 border border-black p-3">
-            <div><span className="font-bold">Nom et Prénoms:</span> {eleve.nom.toUpperCase()}</div>
-            <div><span className="font-bold">Classe:</span> {classe}</div>
-            <div><span className="font-bold">Sexe:</span> {eleve.sexe === "M" ? "Masculin ☑ Féminin ☐" : "Masculin ☐ Féminin ☑"}</div>
-            <div><span className="font-bold">Effectif:</span> {resultats.effectif}</div>
+          {/* ==================== IDENTITÉ DE L'ÉLÈVE ==================== */}
+          <div className="grid grid-cols-4 gap-x-2 gap-y-0.5 text-[10px] mb-3 border border-black p-2">
+            <div><span className="font-bold">Prénoms:</span> {eleve.nom?.split(' ')[1] || eleve.nom || ""}</div>
+            <div><span className="font-bold">Nom:</span> {eleve.nom?.split(' ')[0] || eleve.nom || ""}</div>
             <div><span className="font-bold">Né(e) le:</span> {eleve.dateNaissance || "—"}</div>
-            <div><span className="font-bold">Année scolaire:</span> {etablissement?.anneeScolaire || "2024/2025"}</div>
-            <div><span className="font-bold">Matricule:</span> {eleve.matricule || eleve.id.toString().padStart(6, "0")}</div>
-            <div><span className="font-bold">Statut:</span> Nouveau ☑ Redoublant ☐</div>
-            <div className="col-span-2"><span className="font-bold">Professeur principal:</span> {professeurPrincipal}</div>
+            <div><span className="font-bold">à:</span> {eleve.lieuNaissance || "—"}</div>
+            <div><span className="font-bold">Classe:</span> {classe}</div>
+            <div><span className="font-bold">Matricule:</span> {eleve.matricule || eleve.id.toString().padStart(6, '0')}</div>
+            <div><span className="font-bold">Nbre d'élèves:</span> {elevesList.length}</div>
+            <div><span className="font-bold">Redouble:</span> {eleve.redoublant ? "Oui" : "Non"}</div>
           </div>
 
-          {/* SYNTHÈSE VISUELLE */}
-          <div className="grid grid-cols-3 gap-3 mb-4">
-            <div className="bg-blue-50 rounded-lg p-2 text-center border border-blue-100">
-              <p className="text-[10px] text-blue-600 font-bold">MOYENNE</p>
-              <p className="text-xl font-bold text-blue-700">{resultats.moyenneGenerale}/20</p>
-            </div>
-            <div className="bg-emerald-50 rounded-lg p-2 text-center border border-emerald-100">
-              <p className="text-[10px] text-emerald-600 font-bold">RANG</p>
-              <p className="text-xl font-bold text-emerald-700">{resultats.rang}e / {resultats.effectif}</p>
-            </div>
-            <div className="bg-amber-50 rounded-lg p-2 text-center border border-amber-100">
-              <p className="text-[10px] text-amber-600 font-bold">RÉUSSITE</p>
-              <p className="text-xl font-bold text-amber-700">{tauxReussite}%</p>
-            </div>
-          </div>
-
-          {/* TABLEAU DES NOTES */}
-          <div className="overflow-x-auto mb-4">
-            <table className="w-full text-[10px] border border-black">
+          {/* ==================== TABLEAU DES NOTES ==================== */}
+          <div className="overflow-x-auto mb-3">
+            <table className="w-full text-[9px] border border-black">
               <thead>
                 <tr className="border-b border-black bg-gray-100">
-                  <th className="border-r border-black p-1 text-left w-40">MATIÈRES</th>
-                  <th className="border-r border-black p-1 text-center w-14">Coef</th>
-                  <th className="border-r border-black p-1 text-center w-14">Éval.1</th>
-                  <th className="border-r border-black p-1 text-center w-14">Éval.2</th>
-                  <th className="border-r border-black p-1 text-center w-14">Moyenne</th>
-                  <th className="border-r border-black p-1 text-center w-14">Total</th>
-                  <th className="border-r border-black p-1 text-left">Appréciation</th>
+                  <th className="border-r border-black p-1 text-left w-28">DISCIPLINES</th>
+                  <th className="border-r border-black p-1 text-center w-10">Devoir</th>
+                  <th className="border-r border-black p-1 text-center w-10">Comp</th>
+                  <th className="border-r border-black p-1 text-center w-10">Moy/20</th>
+                  <th className="border-r border-black p-1 text-center w-8">Coef</th>
+                  <th className="border-r border-black p-1 text-center w-12">Moy x</th>
+                  <th className="border-r border-black p-1 text-center w-8">T.H</th>
+                  <th className="border-r border-black p-1 text-center w-8">Rang</th>
+                  <th className="border-r border-black p-1 text-left w-28">Appréciations</th>
+                  <th className="border-r border-black p-1 text-left w-24">Professeur</th>
                 </tr>
               </thead>
               <tbody>
                 {matieresAvecNotes.map((m: any, idx: number) => (
                   <tr key={m.id} className={idx % 2 === 0 ? "bg-white" : "bg-gray-50"}>
                     <td className="border-r border-black p-1 font-medium">{m.nom}</td>
+                    <td className="border-r border-black p-1 text-center">{m.eval1 !== null ? m.eval1.toFixed(2) : "—"}</td>
+                    <td className="border-r border-black p-1 text-center">{m.eval2 !== null ? m.eval2.toFixed(2) : "—"}</td>
+                    <td className="border-r border-black p-1 text-center font-bold">
+                      {m.moyenne !== null ? m.moyenne.toFixed(2) : "—"}
+                    </td>
                     <td className="border-r border-black p-1 text-center">{m.coefficient}</td>
-                    <td className="border-r border-black p-1 text-center font-mono">{m.eval1 !== null ? m.eval1.toFixed(2) : "—"}</td>
-                    <td className="border-r border-black p-1 text-center font-mono">{m.eval2 !== null ? m.eval2.toFixed(2) : "—"}</td>
-                    <td className="border-r border-black p-1 text-center font-bold font-mono">{m.moyenne !== null ? m.moyenne.toFixed(2) : "—"}</td>
-                    <td className="border-r border-black p-1 text-center font-mono">{m.moyenne !== null ? (m.moyenne * m.coefficient).toFixed(2) : "—"}</td>
+                    <td className="border-r border-black p-1 text-center">
+                      {m.moyenne !== null ? (m.moyenne * m.coefficient).toFixed(2) : "—"}
+                    </td>
+                    <td className="border-r border-black p-1 text-center">TH</td>
+                    <td className="border-r border-black p-1 text-center font-bold">
+                      {m.rangMatiere ? `${m.rangMatiere}` : "—"}
+                    </td>
                     <td className="border-r border-black p-1">{getAppreciation(m.moyenne)}</td>
+                    <td className="border-r border-black p-1 text-[8px]">{m.professeur || "—"}</td>
                   </tr>
                 ))}
               </tbody>
-              <tfoot>
-                <tr className="border-t border-black bg-gray-100 font-bold">
-                  <td className="border-r border-black p-1">TOTAL GÉNÉRAL</td>
-                  <td className="border-r border-black p-1 text-center">{matieres.reduce((s, m) => s + m.coefficient, 0)}</td>
-                  <td colSpan={4} className="border-r border-black p-1 text-center">—</td>
-                  <td className="p-1">{resultats.moyenneGenerale}/20</td>
+              <tfoot className="bg-gray-100 font-bold">
+                <tr>
+                  <td className="border-r border-black p-1 text-right pr-2" colSpan={4}>TOTAL:</td>
+                  <td className="border-r border-black p-1 text-center">{totalCoef}</td>
+                  <td className="border-r border-black p-1 text-center">{totalPoints.toFixed(2)}</td>
+                  <td className="border-r border-black p-1 text-center" colSpan={2}></td>
+                  <td className="border-r border-black p-1 text-center" colSpan={2}></td>
                 </tr>
+        
+                <tr>
+                  <td className="border-r border-black p-1 text-right pr-2" colSpan={4}>Moyenne / Rang:</td>
+                  <td className="border-r border-black p-1 text-center" colSpan={2}>{moyenneGenerale.toFixed(2)} /20</td>
+                  <td className="border-r border-black p-1 text-center">Rang</td>
+                  <td className="border-r border-black p-1 text-center font-bold">{rang}</td>
+                  <td className="border-r border-black p-1" colSpan={2}></td>
+                </tr>
+                
               </tfoot>
             </table>
           </div>
 
-          {/* COMPARAISON CLASSE */}
-          <div className="grid grid-cols-2 gap-4 mb-4">
-            <div className="border border-black p-2 text-center">
-              <p className="font-bold text-[9px]">Moyenne de la classe</p>
-              <p className="text-lg font-bold">{resultats.moyenneClasse}/20</p>
+          {/* ==================== STATISTIQUES CLASSE ==================== */}
+          <div className="grid grid-cols-2 gap-2 mb-3 text-[9px]">
+            <div className="border border-black p-1 text-center">
+              <span className="font-bold">Moyenne de la classe:</span> {moyenneClasse.toFixed(2)}/20
             </div>
-            <div className="border border-black p-2 text-center">
-              <p className="font-bold text-[9px]">Meilleure / Pire</p>
-              <p className="text-base font-bold">{resultats.meilleureMoyenne} / {resultats.pireMoyenne}</p>
+            <div className="border border-black p-1 text-center">
+              <span className="font-bold">Meilleure moyenne:</span> {meilleurEleveNom} ({meilleureMoyenne.toFixed(2)}/20)
+            </div>
+            <div className="border border-black p-1 text-center">
+              <span className="font-bold">Plus faible moyenne:</span> {pireEleveNom} ({pireMoyenne.toFixed(2)}/20)
+            </div>
+            <div className="border border-black p-1 text-center">
+              <span className="font-bold">Retards / Absences:</span> ___ / ___
             </div>
           </div>
 
-          {/* APPRÉCIATION */}
-          <div className="border border-black p-3 mb-4">
-            <p className="font-bold text-sm">Appréciation du Professeur principal</p>
-            <p className="text-sm italic mt-1">
-              {parseFloat(resultats.moyenneGenerale) >= 14
-                ? "🏆 Excellent trimestre. Félicitations pour ce très bon travail !"
-                : parseFloat(resultats.moyenneGenerale) >= 12
-                ? "👍 Bon trimestre. Encouragements à maintenir cette dynamique."
-                : parseFloat(resultats.moyenneGenerale) >= 10
-                ? "📚 Trimestre correct. Des efforts supplémentaires sont nécessaires."
-                : "⚠️ Résultats insuffisants. Un travail plus régulier est requis."}
+          {/* ==================== TABLEAU DES MENTIONS ==================== */}
+          <div className="grid grid-cols-3 gap-2 mb-3">
+            <div className="border border-black p-1">
+              <p className="text-[8px] font-bold text-center">Satisfaisant</p>
+              <div className="flex justify-center items-center h-6">
+                <div className={`w-4 h-4 border border-black ${isSatisfaisant ? 'bg-black' : ''}`}></div>
+                <span className="ml-2 text-[8px]">doit continuer</span>
+              </div>
+            </div>
+            <div className="border border-black p-1">
+              <p className="text-[8px] font-bold text-center">Félicitations</p>
+              <div className="flex justify-center items-center h-6">
+                <div className={`w-4 h-4 border border-black ${isFelicitations ? 'bg-black' : ''}`}></div>
+              </div>
+            </div>
+            <div className="border border-black p-1">
+              <p className="text-[8px] font-bold text-center">Encouragement</p>
+              <div className="flex justify-center items-center h-6">
+                <div className={`w-4 h-4 border border-black ${isEncouragement ? 'bg-black' : ''}`}></div>
+              </div>
+            </div>
+            <div className="border border-black p-1">
+              <p className="text-[8px] font-bold text-center">Peut mieux faire</p>
+              <div className="flex justify-center items-center h-6">
+                <div className={`w-4 h-4 border border-black ${isPeutMieuxFaire ? 'bg-black' : ''}`}></div>
+              </div>
+            </div>
+            <div className="border border-black p-1">
+              <p className="text-[8px] font-bold text-center">Insuffisant</p>
+              <div className="flex justify-center items-center h-6">
+                <div className={`w-4 h-4 border border-black ${isInsuffisant ? 'bg-black' : ''}`}></div>
+              </div>
+            </div>
+            <div className="border border-black p-1">
+              <p className="text-[8px] font-bold text-center">Avertissement</p>
+              <div className="flex justify-center items-center h-6">
+                <div className="w-4 h-4 border border-black"></div>
+              </div>
+            </div>
+          </div>
+
+          {/* ==================== OBSERVATIONS ==================== */}
+          <div className="border border-black p-2 mb-3">
+            <p className="text-[9px] font-bold uppercase mb-1">Observations du conseil des professeurs</p>
+            <p className="text-[9px] italic">
+              {appreciationGenerale === "Excellent" && "L'élève a fait preuve d'un excellent travail tout au long du trimestre. Félicitations !"}
+              {appreciationGenerale === "Très bien" && "Très bon travail. L'élève doit maintenir cette dynamique positive."}
+              {appreciationGenerale === "Bien" && "Bon travail dans l'ensemble. Des efforts supplémentaires dans certaines matières seraient bénéfiques."}
+              {appreciationGenerale === "Assez bien" && "Résultats satisfaisants mais perfectibles. Un travail plus régulier est recommandé."}
+              {appreciationGenerale === "Passable" && "Résultats fragiles. Une meilleure implication est nécessaire."}
+              {appreciationGenerale === "Insuffisant" && "Résultats préoccupants. Un soutien renforcé est indispensable."}
             </p>
           </div>
 
-          {/* SIGNATURES */}
-          <div className="flex justify-between items-end mt-4 pt-2">
+          {/* ==================== SIGNATURES ==================== */}
+          <div className="flex justify-between items-end mt-2">
             <div className="text-center">
-              <div className="border-b border-black w-32 mb-1"></div>
-              <p className="text-[10px]">Visu du parent</p>
+              <div className="border-t border-black w-32 pt-1 mb-1"></div>
+              <p className="text-[8px]">Le professeur principal</p>
+              <p className="text-[9px] font-medium mt-1">{professeurPrincipal}</p>
             </div>
             <div className="text-center">
-              <div className="border-b border-black w-40 mb-1"></div>
-              <p className="text-[10px]">Observations et Visa du Chef d'Établissement</p>
+              <div className="border-t border-black w-32 pt-1 mb-1"></div>
+              <p className="text-[8px]">Le Chef d'Établissement</p>
+            </div>
+            <div className="text-center">
+              <div className="border-t border-black w-32 pt-1 mb-1"></div>
+              <p className="text-[8px]">Visu du Parent / Tuteur</p>
             </div>
           </div>
-          <div className="text-center mt-4 pt-2 border-t border-black text-xs">
-            <p>Fait à {etablissement?.adresse?.split(',')[0] || "Yaoundé"}, le {new Date().toLocaleDateString('fr-FR')}</p>
-            <p className="font-bold mt-1">Le proviseur</p>
+          
+          <div className="text-center mt-2 text-[7px] text-slate-400">
+            <p>{nomEtab} - {annee}</p>
           </div>
         </div>
 
-        <div className="flex justify-end gap-3 p-4 border-t border-slate-200 print:hidden">
-          <button onClick={onClose} className="px-4 py-2 bg-white border border-slate-300 rounded-xl text-sm hover:bg-slate-50">Fermer</button>
-          <button onClick={handlePrint} className="px-5 py-2 bg-blue-600 text-white rounded-xl text-sm font-semibold shadow-sm hover:bg-blue-700 flex items-center gap-2">
+        {/* Boutons d'action */}
+        <div className="flex justify-end gap-3 p-4 border-t border-slate-200 print:hidden bg-white sticky bottom-0">
+          <button onClick={onClose} className="px-4 py-2 bg-white border border-slate-300 rounded-xl text-sm hover:bg-slate-50 transition">
+            Fermer
+          </button>
+          <button onClick={handlePrint} className="px-5 py-2 bg-blue-600 text-white rounded-xl text-sm font-semibold shadow-sm hover:bg-blue-700 transition flex items-center gap-2">
             <Printer size={16} /> Imprimer
           </button>
         </div>
@@ -1098,7 +1222,6 @@ function BulletinModal({
     </div>
   );
 }
-
 // ─── Import Excel Modal ───────────────────────────────────────────────────────
 
 function ImportExcelModal({ onClose, onImport, elevesList, classe, matiereNom, periode }: any) {
@@ -1205,11 +1328,19 @@ function ImportExcelModal({ onClose, onImport, elevesList, classe, matiereNom, p
                 <div className="overflow-x-auto">
                   <table className="w-full text-xs">
                     <thead className="bg-slate-50">
-                      <tr>{Object.keys(preview[0]).map(key => <th key={key} className="p-2 border">{key}</th>)}</tr>
+                      <tr>
+                        {Object.keys(preview[0]).map(key => (
+                          <th key={key} className="p-2 border">{key}</th>
+                        ))}
+                      </tr>
                     </thead>
                     <tbody>
                       {preview.map((row, idx) => (
-                        <tr key={idx}>{Object.values(row).map((val: any, i) => <td key={i} className="p-2 border">{val}</td>)}</tr>
+                        <tr key={idx}>
+                          {Object.values(row).map((val: any, i) => (
+                            <td key={i} className="p-2 border">{val}</td>
+                          ))}
+                        </tr>
                       ))}
                     </tbody>
                   </table>
@@ -1236,6 +1367,7 @@ export default function NotesPage() {
   const [eleves] = useElevesStore();
   const [enseignants] = useEnseignantsStore();
   const [etablissement] = useEtablissementStore();
+  const [cours] = useCoursStore();
   const [allNotes, setAllNotes] = useNotesStore();
 
   const [classe, setClasse] = useState("6A");
@@ -1336,116 +1468,116 @@ export default function NotesPage() {
   };
 
   return (
-    <div className="p-6 space-y-6 bg-gradient-to-br from-slate-50 to-white min-h-screen print:p-2 print:bg-white">
+    <div className="p-4 md:p-6 space-y-4 md:space-y-6 bg-gradient-to-br from-slate-50 to-white min-h-screen print:p-2 print:bg-white">
 
-      {/* EN-TÊTE */}
-      <div className="print:hidden flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+      {/* EN-TÊTE RESPONSIVE */}
+      <div className="print:hidden flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <div>
-          <h1 className="text-3xl font-bold bg-gradient-to-r from-slate-800 to-slate-600 bg-clip-text text-transparent flex items-center gap-3">
-            <div className="p-2.5 bg-white rounded-2xl shadow-md border border-slate-200 text-blue-600">
-              <FileText size={28} strokeWidth={1.8} />
+          <h1 className="text-2xl sm:text-3xl font-bold bg-gradient-to-r from-slate-800 to-slate-600 bg-clip-text text-transparent flex items-center gap-3">
+            <div className="p-2 sm:p-2.5 bg-white rounded-2xl shadow-md border border-slate-200 text-blue-600">
+              <FileText size={24} className="sm:w-7 sm:h-7" strokeWidth={1.8} />
             </div>
             Gestion des Notes
           </h1>
-          <p className="text-sm text-slate-500 mt-1 ml-14">Saisie, suivi, analyse et communication aux parents</p>
+          <p className="text-xs sm:text-sm text-slate-500 mt-1 ml-12 sm:ml-14">Saisie, suivi, analyse et communication aux parents</p>
         </div>
-        <div className="flex gap-2 flex-wrap">
-          <button onClick={() => setShowImportModal(true)} className="px-4 py-2.5 bg-emerald-50 border border-emerald-200 rounded-xl text-emerald-600 hover:bg-emerald-100 transition flex items-center gap-2 text-sm font-medium">
-            <ExcelIcon size={16} /> Importer Excel
+        <div className="flex flex-wrap gap-2">
+          <button onClick={() => setShowImportModal(true)} className="px-3 sm:px-4 py-2 bg-emerald-50 border border-emerald-200 rounded-xl text-emerald-600 hover:bg-emerald-100 transition flex items-center gap-2 text-xs sm:text-sm font-medium">
+            <ExcelIcon size={14} className="sm:w-4 sm:h-4" /> Importer Excel
           </button>
-          <button onClick={exportCSV} className="p-2.5 bg-white border border-slate-200 rounded-xl text-slate-500 hover:bg-slate-50 transition" title="Exporter CSV">
-            <Download size={18} />
+          <button onClick={exportCSV} className="p-2 bg-white border border-slate-200 rounded-xl text-slate-500 hover:bg-slate-50 transition" title="Exporter CSV">
+            <Download size={16} className="sm:w-4 sm:h-4" />
           </button>
-          <button onClick={() => window.print()} className="p-2.5 bg-white border border-slate-200 rounded-xl text-slate-500 hover:bg-slate-50 transition" title="Imprimer">
-            <Printer size={18} />
+          <button onClick={() => window.print()} className="p-2 bg-white border border-slate-200 rounded-xl text-slate-500 hover:bg-slate-50 transition" title="Imprimer">
+            <Printer size={16} className="sm:w-4 sm:h-4" />
           </button>
           <button
             onClick={handleEnvoiGroupe}
-            className="px-4 py-2.5 bg-green-500 text-white rounded-xl text-sm font-semibold flex items-center gap-2 hover:bg-green-600 transition shadow-sm shadow-green-200"
+            className="px-3 sm:px-4 py-2 bg-green-500 text-white rounded-xl text-xs sm:text-sm font-semibold flex items-center gap-2 hover:bg-green-600 transition shadow-sm shadow-green-200"
           >
-            <UsersIcon size={16} />
-            <span className="hidden md:inline">Notifier tous les parents</span>
+            <UsersIcon size={14} className="sm:w-4 sm:h-4" />
+            <span className="hidden sm:inline">Notifier tous les parents</span>
           </button>
           <button
             onClick={() => setEditMode(!editMode)}
-            className={`px-5 py-2.5 rounded-xl text-sm font-semibold flex items-center gap-2 transition-all ${
+            className={`px-4 sm:px-5 py-2 rounded-xl text-xs sm:text-sm font-semibold flex items-center gap-2 transition-all ${
               editMode ? "bg-emerald-600 text-white shadow-md shadow-emerald-200" : "bg-blue-600 text-white shadow-md shadow-blue-200"
             }`}
           >
-            {editMode ? <Save size={16} /> : <Edit size={16} />}
-            {editMode ? "Enregistrer" : "Modifier les notes"}
+            {editMode ? <Save size={14} className="sm:w-4 sm:h-4" /> : <Edit size={14} className="sm:w-4 sm:h-4" />}
+            {editMode ? "Enregistrer" : "Modifier"}
           </button>
         </div>
       </div>
 
-      {/* FILTRES */}
-      <div className="bg-white rounded-2xl border border-slate-200 p-5 shadow-sm print:hidden">
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+      {/* FILTRES RESPONSIFS */}
+      <div className="bg-white rounded-2xl border border-slate-200 p-4 sm:p-5 shadow-sm print:hidden">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
           <div>
             <label className="text-xs font-bold text-slate-500 uppercase tracking-wider block mb-1.5">Classe</label>
-            <select value={classe} onChange={(e) => setClasse(e.target.value)} className="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm">
+            <select value={classe} onChange={(e) => setClasse(e.target.value)} className="w-full p-2 bg-slate-50 border border-slate-200 rounded-xl text-sm">
               {classesDisponibles.map((c) => <option key={c}>{c}</option>)}
             </select>
           </div>
           <div>
             <label className="text-xs font-bold text-slate-500 uppercase tracking-wider block mb-1.5">Matière</label>
-            <select value={matiere} onChange={(e) => setMatiere(e.target.value)} className="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm">
+            <select value={matiere} onChange={(e) => setMatiere(e.target.value)} className="w-full p-2 bg-slate-50 border border-slate-200 rounded-xl text-sm">
               {matieres.map((m) => <option key={m.id} value={m.id}>{m.nom} (coeff. {m.coefficient})</option>)}
             </select>
           </div>
           <div>
             <label className="text-xs font-bold text-slate-500 uppercase tracking-wider block mb-1.5">Période</label>
-            <select value={periode} onChange={(e) => setPeriode(e.target.value)} className="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm">
+            <select value={periode} onChange={(e) => setPeriode(e.target.value)} className="w-full p-2 bg-slate-50 border border-slate-200 rounded-xl text-sm">
               {periodes.map((p) => <option key={p}>{p}</option>)}
             </select>
           </div>
           <div>
             <div className="relative">
-              <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
+              <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
               <input
                 type="text"
                 placeholder="Rechercher un élève..."
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
-                className="w-full pl-9 pr-3 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:ring-2 focus:ring-blue-200 outline-none"
+                className="w-full pl-9 pr-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:ring-2 focus:ring-blue-200 outline-none"
               />
             </div>
           </div>
         </div>
       </div>
 
-      {/* STATISTIQUES */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-4 print:hidden">
+      {/* STATISTIQUES RESPONSIVES */}
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 sm:gap-4 print:hidden">
         {[
-          { label: "Moyenne", value: `${stats.moyenne}/20`, sub: `Coeff ${currentMatiere?.coefficient}`, icon: <TrendingUp size={18} />, bg: "bg-blue-50", color: "text-blue-500" },
-          { label: "Taux réussite", value: `${stats.tauxReussite}%`, sub: "Notes ≥ 10/20", icon: <Award size={18} />, bg: "bg-emerald-50", color: "text-emerald-500" },
-          { label: "Meilleure / Pire", value: `${stats.meilleure} / ${stats.pire}`, sub: `Écart-type ${stats.ecartType}`, icon: <BarChart3 size={18} />, bg: "bg-purple-50", color: "text-purple-500" },
-          { label: "Effectif", value: `${elevesFiltres.length}`, sub: "élèves", icon: <Users size={18} />, bg: "bg-indigo-50", color: "text-indigo-500" },
+          { label: "Moyenne", value: `${stats.moyenne}/20`, sub: `Coeff ${currentMatiere?.coefficient}`, icon: <TrendingUp size={16} />, bg: "bg-blue-50", color: "text-blue-500" },
+          { label: "Taux réussite", value: `${stats.tauxReussite}%`, sub: "Notes ≥ 10/20", icon: <Award size={16} />, bg: "bg-emerald-50", color: "text-emerald-500" },
+          { label: "Meilleure / Pire", value: `${stats.meilleure} / ${stats.pire}`, sub: `Écart-type ${stats.ecartType}`, icon: <BarChart3 size={16} />, bg: "bg-purple-50", color: "text-purple-500" },
+          { label: "Effectif", value: `${elevesFiltres.length}`, sub: "élèves", icon: <Users size={16} />, bg: "bg-indigo-50", color: "text-indigo-500" },
         ].map((s, i) => (
-          <div key={i} className="bg-white rounded-2xl border border-slate-100 p-4 shadow-sm">
-            <div className="flex justify-between items-start mb-2">
-              <span className="text-slate-400 text-xs font-medium">{s.label}</span>
-              <div className={`p-1.5 rounded-lg ${s.bg}`}>{s.icon}</div>
+          <div key={i} className="bg-white rounded-xl sm:rounded-2xl border border-slate-100 p-3 sm:p-4 shadow-sm">
+            <div className="flex justify-between items-start mb-1 sm:mb-2">
+              <span className="text-[9px] sm:text-xs text-slate-400 font-medium">{s.label}</span>
+              <div className={`p-1 sm:p-1.5 rounded-lg ${s.bg}`}>{s.icon}</div>
             </div>
-            <p className="text-2xl font-bold text-slate-800">{s.value}</p>
-            <p className="text-[10px] text-slate-400 mt-0.5">{s.sub}</p>
+            <p className="text-base sm:text-2xl font-bold text-slate-800">{s.value}</p>
+            <p className="text-[8px] sm:text-[10px] text-slate-400 mt-0.5">{s.sub}</p>
           </div>
         ))}
       </div>
 
-      {/* TABLEAU DES NOTES */}
-      <div className="bg-white rounded-3xl border border-slate-200 shadow-sm overflow-hidden">
+      {/* TABLEAU DES NOTES RESPONSIF */}
+      <div className="bg-white rounded-2xl sm:rounded-3xl border border-slate-200 shadow-sm overflow-hidden">
         <div className="overflow-x-auto">
           <table className="w-full text-sm">
             <thead className="bg-slate-50 border-b border-slate-200">
-              <tr className="text-slate-500 text-[11px] font-bold uppercase tracking-wider">
-                <th className="px-4 py-3 text-left">Élève</th>
-                <th className="px-3 py-3 text-left">Photo</th>
-                <th className="px-4 py-3 text-center">Éval.1 /20</th>
-                <th className="px-4 py-3 text-center">Éval.2 /20</th>
-                <th className="px-4 py-3 text-center">Moyenne</th>
-                <th className="px-4 py-3 text-center">Appréciation</th>
-                <th className="px-4 py-3 text-center">Actions</th>
+              <tr className="text-slate-500 text-[10px] sm:text-[11px] font-bold uppercase tracking-wider">
+                <th className="px-2 sm:px-4 py-2 sm:py-3 text-left">Élève</th>
+                <th className="px-1 sm:px-3 py-2 sm:py-3 text-left">Photo</th>
+                <th className="px-2 sm:px-4 py-2 sm:py-3 text-center">Éval.1</th>
+                <th className="px-2 sm:px-4 py-2 sm:py-3 text-center">Éval.2</th>
+                <th className="px-2 sm:px-4 py-2 sm:py-3 text-center">Moy.</th>
+                <th className="px-2 sm:px-4 py-2 sm:py-3 text-center">Appréc.</th>
+                <th className="px-2 sm:px-4 py-2 sm:py-3 text-center">Actions</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100">
@@ -1453,47 +1585,46 @@ export default function NotesPage() {
                 const notes = getNoteData(eleve.id);
                 const hasContact = eleve.parentEmail || eleve.parentTelephone;
                 return (
-                  <tr key={eleve.id} className="hover:bg-slate-50/60 transition group">
-                    <td className="px-4 py-3">
-                      <p className="font-semibold text-slate-700">{eleve.nom}</p>
-                      {eleve.parentNom && <p className="text-[11px] text-slate-400">Parent : {eleve.parentNom}</p>}
+                  <tr key={eleve.id} className="hover:bg-slate-50/60 transition text-xs sm:text-sm">
+                    <td className="px-2 sm:px-4 py-2 sm:py-3 font-semibold text-slate-700">
+                      {eleve.nom}
+                      {eleve.parentNom && <span className="hidden sm:inline text-[10px] text-slate-400 ml-1">({eleve.parentNom})</span>}
                     </td>
-                    <td className="px-3 py-3">
-                      <img src={getElevePhoto(eleve)} alt="" className="w-9 h-9 rounded-full object-cover border-2 border-white shadow-sm" />
-                    </td>
-                    <td className="px-4 py-3 text-center">
+                    <td className="px-1 sm:px-3 py-2 sm:py-3">
+                      <img src={getElevePhoto(eleve)} alt="" className="w-7 h-7 sm:w-9 sm:h-9 rounded-full object-cover border-2 border-white shadow-sm" />
+                    </td>                    <td className="px-2 sm:px-4 py-2 sm:py-3 text-center">
                       {editMode ? (
-                        <input type="number" step="0.5" min="0" max="20" value={notes.eval1 ?? ""} onChange={(e) => updateNotes(eleve.id, e.target.value ? parseFloat(e.target.value) : null, notes.eval2)} className="w-20 p-1.5 border border-slate-200 rounded-lg text-center" />
+                        <input type="number" step="0.5" min="0" max="20" value={notes.eval1 ?? ""} onChange={(e) => updateNotes(eleve.id, e.target.value ? parseFloat(e.target.value) : null, notes.eval2)} className="w-14 sm:w-20 p-1 sm:p-1.5 border border-slate-200 rounded-lg text-center text-xs sm:text-sm" />
                       ) : (
-                        <span className="font-mono">{notes.eval1 !== null ? notes.eval1.toFixed(2) : "—"}</span>
+                        <span className="font-mono text-xs sm:text-sm">{notes.eval1 !== null ? notes.eval1.toFixed(2) : "—"}</span>
                       )}
                     </td>
-                    <td className="px-4 py-3 text-center">
+                    <td className="px-2 sm:px-4 py-2 sm:py-3 text-center">
                       {editMode ? (
-                        <input type="number" step="0.5" min="0" max="20" value={notes.eval2 ?? ""} onChange={(e) => updateNotes(eleve.id, notes.eval1, e.target.value ? parseFloat(e.target.value) : null)} className="w-20 p-1.5 border border-slate-200 rounded-lg text-center" />
+                        <input type="number" step="0.5" min="0" max="20" value={notes.eval2 ?? ""} onChange={(e) => updateNotes(eleve.id, notes.eval1, e.target.value ? parseFloat(e.target.value) : null)} className="w-14 sm:w-20 p-1 sm:p-1.5 border border-slate-200 rounded-lg text-center text-xs sm:text-sm" />
                       ) : (
-                        <span className="font-mono">{notes.eval2 !== null ? notes.eval2.toFixed(2) : "—"}</span>
+                        <span className="font-mono text-xs sm:text-sm">{notes.eval2 !== null ? notes.eval2.toFixed(2) : "—"}</span>
                       )}
                     </td>
-                    <td className="px-4 py-3 text-center">
+                    <td className="px-2 sm:px-4 py-2 sm:py-3 text-center font-bold">
                       {notes.moyenne !== null ? (
-                        <span className={`font-bold font-mono text-base ${getMentionColor(notes.moyenne)}`}>
+                        <span className={`text-xs sm:text-base ${getMentionColor(notes.moyenne)}`}>
                           {notes.moyenne.toFixed(2)}
                         </span>
                       ) : <span className="text-slate-300">—</span>}
                     </td>
-                    <td className="px-4 py-3 text-center">
-                      <span className={`text-[11px] font-semibold px-2.5 py-1 rounded-full ${getMentionBg(notes.moyenne)}`}>
+                    <td className="px-2 sm:px-4 py-2 sm:py-3 text-center">
+                      <span className={`text-[9px] sm:text-[11px] font-semibold px-1.5 sm:px-2.5 py-0.5 sm:py-1 rounded-full ${getMentionBg(notes.moyenne)}`}>
                         {getAppreciation(notes.moyenne)}
                       </span>
                     </td>
-                    <td className="px-4 py-3">
-                      <div className="flex items-center justify-center gap-1.5">
-                        <button onClick={() => setBulletinEleve(eleve)} title="Bulletin complet" className="p-1.5 bg-blue-50 text-blue-600 rounded-lg hover:bg-blue-100 transition">
-                          <FileSpreadsheet size={15} />
+                    <td className="px-2 sm:px-4 py-2 sm:py-3">
+                      <div className="flex items-center justify-center gap-1 sm:gap-1.5">
+                        <button onClick={() => setBulletinEleve(eleve)} title="Bulletin complet" className="p-1 sm:p-1.5 bg-blue-50 text-blue-600 rounded-lg hover:bg-blue-100 transition">
+                          <FileSpreadsheet size={13} className="sm:w-4 sm:h-4" />
                         </button>
-                        <button onClick={() => handleEnvoyerMatiere(eleve)} title="Envoyer la note" className={hasContact ? "p-1.5 bg-green-50 text-green-600 rounded-lg hover:bg-green-100 transition" : "p-1.5 bg-slate-100 text-slate-300 rounded-lg cursor-not-allowed"}>
-                          <Send size={15} />
+                        <button onClick={() => handleEnvoyerMatiere(eleve)} title="Envoyer la note" className={`p-1 sm:p-1.5 rounded-lg transition ${hasContact ? "bg-green-50 text-green-600 hover:bg-green-100" : "bg-slate-100 text-slate-300 cursor-not-allowed"}`} disabled={!hasContact}>
+                          <Send size={13} className="sm:w-4 sm:h-4" />
                         </button>
                       </div>
                     </td>
@@ -1507,7 +1638,18 @@ export default function NotesPage() {
 
       {/* MODALS */}
       {bulletinEleve && (
-        <BulletinModal eleve={bulletinEleve} allNotes={allNotes} classe={classe} periode={periode} elevesList={elevesFiltres} enseignants={enseignants} etablissement={etablissement} onClose={() => setBulletinEleve(null)} />
+        <BulletinModal 
+          eleve={bulletinEleve} 
+          allNotes={allNotes} 
+          classe={classe} 
+          periode={periode} 
+          elevesList={elevesFiltres} 
+          enseignants={enseignants} 
+          etablissement={etablissement}
+          cours={cours}
+          stats={stats}
+          onClose={() => setBulletinEleve(null)} 
+        />
       )}
       {showEnvoiModal && selectedEleve && currentMatiere && (
         <EnvoiModal
