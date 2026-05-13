@@ -4,114 +4,18 @@ import { useState, useMemo, useEffect } from "react";
 import {
   Folder, FileText, File, Image, Video, Download, Trash2, Share2,
   Upload, Search, Filter, Grid3x3, List, Calendar,
-  BookOpen, Award, FileCheck, Clock, X
+  BookOpen, Award, FileCheck, Clock, X, Lock
 } from "lucide-react";
-import { useDocumentsStore } from "@/lib/stores";
-import type { Document } from "@/lib/stores";
+import { useAuth } from "@/contexts/AuthContext";
 
 // Catégories disponibles
 const categories = [
-  { id: "tous", nom: "Tous les documents", icon: Folder },
-  { id: "cours", nom: "Cours & Supports", icon: BookOpen },
-  { id: "examens", nom: "Examens", icon: Award },
-  { id: "anciennes-epreuves", nom: "Anciennes épreuves", icon: FileCheck },
-  { id: "pv", nom: "PV & Rapports", icon: Clock },
-  { id: "administratif", nom: "Administratif", icon: FileText },
-];
-
-const classes = ["Toutes", "6A", "5B", "4A", "3A", "2nde", "1ere", "Tle"];
-const matieresListe = ["Toutes", "Maths", "Français", "Anglais", "Histoire", "Physique", "Informatique"];
-
-// Données par défaut (documents de démonstration)
-const defaultDocuments: Omit<Document, "id">[] = [
-  {
-    nom: "Cours maths - Chapitre 3 (Fonctions)",
-    type: "pdf",
-    categorie: "cours",
-    classe: "6A",
-    matiere: "Maths",
-    taille: "2.3 MB",
-    date: "2025-03-15",
-    url: "#",
-    auteur: "M. Kanga"
-  },
-  {
-    nom: "Devoir maison - Français",
-    type: "doc",
-    categorie: "examens",
-    classe: "5B",
-    matiere: "Français",
-    taille: "1.1 MB",
-    date: "2025-03-20",
-    url: "#",
-    auteur: "Mme Ngo"
-  },
-  {
-    nom: "Épreuve Maths BAC 2024",
-    type: "pdf",
-    categorie: "anciennes-epreuves",
-    classe: "Tle",
-    matiere: "Maths",
-    taille: "4.5 MB",
-    date: "2024-06-10",
-    url: "#",
-    auteur: "Ministère"
-  },
-  {
-    nom: "PV Conseil de classe T1",
-    type: "pdf",
-    categorie: "pv",
-    classe: "Toutes",
-    matiere: undefined,
-    taille: "0.8 MB",
-    date: "2025-02-28",
-    url: "#",
-    auteur: "Direction"
-  },
-  {
-    nom: "Règlement intérieur",
-    type: "pdf",
-    categorie: "administratif",
-    classe: "Toutes",
-    matiere: undefined,
-    taille: "1.2 MB",
-    date: "2024-09-01",
-    url: "#",
-    auteur: "Direction"
-  },
-  {
-    nom: "Cours Anglais - Present Perfect",
-    type: "pdf",
-    categorie: "cours",
-    classe: "4A",
-    matiere: "Anglais",
-    taille: "1.8 MB",
-    date: "2025-03-10",
-    url: "#",
-    auteur: "Mr Smith"
-  },
-  {
-    nom: "Examen Blanc Histoire",
-    type: "pdf",
-    categorie: "examens",
-    classe: "3A",
-    matiere: "Histoire",
-    taille: "3.2 MB",
-    date: "2025-03-25",
-    url: "#",
-    auteur: "M. Fofana"
-  },
-  {
-    nom: "Sujet Physique 2023",
-    type: "pdf",
-    categorie: "anciennes-epreuves",
-    classe: "1ere",
-    matiere: "Physique",
-    taille: "2.9 MB",
-    date: "2023-06-15",
-    url: "#",
-    auteur: "Ministère"
-  }
+  { id: "tous", nom: "Tous les documents", icon: Folder, roles: ["admin", "teacher", "parent"] },
+  { id: "cours", nom: "Cours & Supports", icon: BookOpen, roles: ["admin", "teacher", "parent"] },
+  { id: "examens", nom: "Examens", icon: Award, roles: ["admin", "teacher", "parent"] },
+  { id: "anciennes-epreuves", nom: "Anciennes épreuves", icon: FileCheck, roles: ["admin", "teacher", "parent"] },
+  { id: "pv", nom: "PV & Rapports", icon: Clock, roles: ["admin", "teacher"] },
+  { id: "administratif", nom: "Administratif", icon: FileText, roles: ["admin"] },
 ];
 
 // Icône selon le type de fichier
@@ -125,7 +29,6 @@ const getFileIcon = (type: string) => {
   }
 };
 
-// Couleur de catégorie
 const getCategoryColor = (categorie: string) => {
   switch(categorie) {
     case "cours": return "bg-blue-100 text-blue-700";
@@ -138,23 +41,34 @@ const getCategoryColor = (categorie: string) => {
 };
 
 // Modal d'import
-function ImportModal({ onClose, onSave }: { onClose: () => void; onSave: (doc: Omit<Document, "id">) => void }) {
+function ImportModal({ onClose, onSave, userRole, userClasses, userMatieres, allClasses, allMatieres }: any) {
   const [file, setFile] = useState<File | null>(null);
   const [nom, setNom] = useState("");
-  const [type, setType] = useState<Document["type"]>("pdf");
+  const [type, setType] = useState<string>("pdf");
   const [taille, setTaille] = useState("");
   const [form, setForm] = useState({
-    classe: "6A",
-    matiere: "Maths",
+    classe: userRole === "teacher" ? (userClasses[0] || "") : "",
+    matiere: userRole === "teacher" ? (userMatieres[0] || "") : "",
     categorie: "cours",
-    auteur: "Utilisateur",
+    auteur: "",
     date: new Date().toISOString().slice(0, 10),
   });
+  const [isSubmitting, setIsSubmitting] = useState(false);
+
+  // Classes disponibles
+  const classesDisponibles = userRole === "teacher" 
+    ? allClasses.filter((c: any) => userClasses.includes(c.nom))
+    : allClasses;
+
+  // Matières disponibles
+  const matieresDisponibles = userRole === "teacher"
+    ? allMatieres.filter((m: any) => userMatieres.includes(m.nom))
+    : allMatieres;
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const selectedFile = e.target.files?.[0];
     if (selectedFile) {
-      let fileType: Document["type"] = "autre";
+      let fileType = "autre";
       if (selectedFile.type === "application/pdf") fileType = "pdf";
       else if (selectedFile.type.includes("word")) fileType = "doc";
       else if (selectedFile.type.startsWith("image/")) fileType = "img";
@@ -170,22 +84,53 @@ function ImportModal({ onClose, onSave }: { onClose: () => void; onSave: (doc: O
     }
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!file) return;
+    
+    setIsSubmitting(true);
+    const token = localStorage.getItem('token');
     const fileUrl = URL.createObjectURL(file);
-    onSave({
-      nom,
-      type,
-      categorie: form.categorie,
-      classe: form.classe,
-      matiere: form.matiere === "Toutes" ? undefined : form.matiere,
-      taille,
-      date: form.date,
-      url: fileUrl,
-      auteur: form.auteur,
-    });
+    
+    try {
+      const response = await fetch('/api/documents', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify({
+          nom,
+          type,
+          categorie: form.categorie,
+          classe: form.classe,
+          matiere: form.matiere || undefined,
+          taille,
+          date: form.date,
+          url: fileUrl,
+          auteur: form.auteur || "Utilisateur",
+        })
+      });
+      
+      if (response.ok) {
+        const newDoc = await response.json();
+        onSave(newDoc);
+        onClose(); // Fermer le modal après sauvegarde
+      } else {
+        const error = await response.json();
+        alert(error.error || "Erreur lors de l'import");
+      }
+    } catch (error) {
+      console.error("Erreur import:", error);
+      alert("Erreur lors de l'import");
+    } finally {
+      setIsSubmitting(false);
+    }
   };
+
+  const categoriesDisponibles = categories.filter(cat => 
+    cat.roles.includes(userRole)
+  );
 
   return (
     <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
@@ -197,35 +142,67 @@ function ImportModal({ onClose, onSave }: { onClose: () => void; onSave: (doc: O
         <form onSubmit={handleSubmit} className="space-y-4">
           <div>
             <label className="block text-sm font-medium mb-1">Classe</label>
-            <select value={form.classe} onChange={e => setForm({...form, classe: e.target.value})} className="w-full border rounded-xl p-2">
-              {classes.map(c => <option key={c}>{c}</option>)}
+            <select 
+              value={form.classe} 
+              onChange={e => setForm({...form, classe: e.target.value})} 
+              required
+              className="w-full border rounded-xl p-2"
+            >
+              <option value="">Sélectionner une classe</option>
+              {classesDisponibles.map((c: any) => (
+                <option key={c.id} value={c.nom}>{c.nom}</option>
+              ))}
             </select>
           </div>
           <div>
-            <label className="block text-sm font-medium mb-1">Matière</label>
-            <select value={form.matiere} onChange={e => setForm({...form, matiere: e.target.value})} className="w-full border rounded-xl p-2">
-              {matieresListe.map(m => <option key={m}>{m}</option>)}
+            <label className="block text-sm font-medium mb-1">Matière (optionnel)</label>
+            <select 
+              value={form.matiere} 
+              onChange={e => setForm({...form, matiere: e.target.value})} 
+              className="w-full border rounded-xl p-2"
+            >
+              <option value="">Sélectionner une matière</option>
+              {matieresDisponibles.map((m: any) => (
+                <option key={m.id} value={m.nom}>{m.nom}</option>
+              ))}
             </select>
           </div>
           <div>
             <label className="block text-sm font-medium mb-1">Catégorie</label>
-            <select value={form.categorie} onChange={e => setForm({...form, categorie: e.target.value})} className="w-full border rounded-xl p-2">
-              {categories.filter(c => c.id !== "tous").map(c => <option key={c.id} value={c.id}>{c.nom}</option>)}
+            <select 
+              value={form.categorie} 
+              onChange={e => setForm({...form, categorie: e.target.value})} 
+              className="w-full border rounded-xl p-2"
+            >
+              {categoriesDisponibles.filter(c => c.id !== "tous").map(c => (
+                <option key={c.id} value={c.id}>{c.nom}</option>
+              ))}
             </select>
           </div>
           <div>
-            <label className="block text-sm font-medium mb-1">Fichier (PDF, DOC, Image, Vidéo)</label>
+            <label className="block text-sm font-medium mb-1">Fichier</label>
             <input type="file" accept=".pdf,.doc,.docx,image/*,video/*" onChange={handleFileChange} required className="w-full border rounded-xl p-2" />
           </div>
           {file && (
             <>
-              <div><label className="block text-sm font-medium mb-1">Nom du document</label><input value={nom} onChange={e => setNom(e.target.value)} required className="w-full border rounded-xl p-2" /></div>
-              <div><label className="block text-sm font-medium mb-1">Auteur</label><input value={form.auteur} onChange={e => setForm({...form, auteur: e.target.value})} className="w-full border rounded-xl p-2" /></div>
-              <div><label className="block text-sm font-medium mb-1">Date</label><input type="date" value={form.date} onChange={e => setForm({...form, date: e.target.value})} className="w-full border rounded-xl p-2" /></div>
+              <div>
+                <label className="block text-sm font-medium mb-1">Nom du document</label>
+                <input value={nom} onChange={e => setNom(e.target.value)} required className="w-full border rounded-xl p-2" />
+              </div>
+              <div>
+                <label className="block text-sm font-medium mb-1">Auteur</label>
+                <input value={form.auteur} onChange={e => setForm({...form, auteur: e.target.value})} className="w-full border rounded-xl p-2" placeholder="Votre nom" />
+              </div>
+              <div>
+                <label className="block text-sm font-medium mb-1">Date</label>
+                <input type="date" value={form.date} onChange={e => setForm({...form, date: e.target.value})} className="w-full border rounded-xl p-2" />
+              </div>
             </>
           )}
           <div className="flex gap-3 pt-2">
-            <button type="submit" disabled={!file} className="flex-1 bg-blue-600 text-white py-2 rounded-xl font-semibold disabled:opacity-50">Importer</button>
+            <button type="submit" disabled={!file || isSubmitting} className="flex-1 bg-blue-600 text-white py-2 rounded-xl font-semibold disabled:opacity-50">
+              {isSubmitting ? "Import..." : "Importer"}
+            </button>
             <button type="button" onClick={onClose} className="flex-1 border py-2 rounded-xl">Annuler</button>
           </div>
         </form>
@@ -235,62 +212,148 @@ function ImportModal({ onClose, onSave }: { onClose: () => void; onSave: (doc: O
 }
 
 export default function DocumentsPage() {
-  const [documents, setDocuments] = useDocumentsStore();
+  const { isAdmin, isTeacher, isParent, user, token } = useAuth();
+  const [documents, setDocuments] = useState<any[]>([]);
+  const [allClasses, setAllClasses] = useState<any[]>([]);
+  const [allMatieres, setAllMatieres] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
   const [categorieActive, setCategorieActive] = useState("tous");
-  const [classeFiltre, setClasseFiltre] = useState("Toutes");
-  const [matiereFiltre, setMatiereFiltre] = useState("Toutes");
+  const [classeFiltre, setClasseFiltre] = useState("");
+  const [matiereFiltre, setMatiereFiltre] = useState("");
   const [viewMode, setViewMode] = useState<"grid" | "table">("grid");
   const [showFilters, setShowFilters] = useState(false);
   const [showImportModal, setShowImportModal] = useState(false);
-  const [isInitialized, setIsInitialized] = useState(false);
+  const [userClasses, setUserClasses] = useState<string[]>([]);
+  const [userMatieres, setUserMatieres] = useState<string[]>([]);
 
-  // Initialiser avec les documents par défaut si le store est vide
+  // Charger les données
   useEffect(() => {
-    if (!isInitialized && documents.length === 0) {
-      // Ajouter les documents par défaut
-      const initialDocs = defaultDocuments.map((doc, index) => ({
-        ...doc,
-        id: index + 1
-      }));
-      setDocuments(initialDocs);
-      setIsInitialized(true);
-    }
-  }, [documents, setDocuments, isInitialized]);
+    const fetchData = async () => {
+      if (!token) return;
+      
+      try {
+        const headers = { 'Authorization': `Bearer ${token}` };
+        
+        const [docsRes, classesRes, matieresRes] = await Promise.all([
+          fetch('/api/documents', { headers }),
+          fetch('/api/classes', { headers }),
+          fetch('/api/matieres', { headers })
+        ]);
+        
+        const docsData = await docsRes.json();
+        const classesData = await classesRes.json();
+        const matieresData = await matieresRes.json();
+        
+        setDocuments(Array.isArray(docsData) ? docsData : []);
+        setAllClasses(Array.isArray(classesData) ? classesData : []);
+        setAllMatieres(Array.isArray(matieresData) ? matieresData : []);
+        
+        // Si l'utilisateur est enseignant, récupérer ses classes et matières
+        if (isTeacher && user?.enseignantId) {
+          const enseignantRes = await fetch(`/api/enseignants/${user.enseignantId}`, { headers });
+          const enseignantData = await enseignantRes.json();
+          
+          if (enseignantData) {
+            try {
+              const classes = JSON.parse(enseignantData.classes || "[]");
+              const matieres = JSON.parse(enseignantData.matieres || "[]");
+              setUserClasses(classes);
+              setUserMatieres(matieres);
+            } catch (e) {
+              setUserClasses([]);
+              setUserMatieres([]);
+            }
+          }
+        }
+      } catch (error) {
+        console.error("Erreur chargement:", error);
+      } finally {
+        setLoading(false);
+      }
+    };
+    
+    fetchData();
+  }, [token, isTeacher, user]);
 
-  // Filtrage
+  // Filtrer les documents
   const filteredDocs = useMemo(() => {
-    return documents.filter(doc => {
-      const matchSearch = doc.nom.toLowerCase().includes(search.toLowerCase()) ||
-                          (doc.matiere && doc.matiere.toLowerCase().includes(search.toLowerCase())) ||
-                          doc.auteur.toLowerCase().includes(search.toLowerCase());
-      const matchCategorie = categorieActive === "tous" || doc.categorie === categorieActive;
-      const matchClasse = classeFiltre === "Toutes" || doc.classe === classeFiltre || doc.classe === "Toutes";
-      const matchMatiere = matiereFiltre === "Toutes" || doc.matiere === matiereFiltre;
-      return matchSearch && matchCategorie && matchClasse && matchMatiere;
-    });
-  }, [documents, search, categorieActive, classeFiltre, matiereFiltre]);
+    let filtered = [...documents];
+    
+    // Filtre par recherche
+    if (search) {
+      filtered = filtered.filter(doc => 
+        doc.nom.toLowerCase().includes(search.toLowerCase()) ||
+        (doc.matiere && doc.matiere.toLowerCase().includes(search.toLowerCase())) ||
+        doc.auteur.toLowerCase().includes(search.toLowerCase())
+      );
+    }
+    
+    // Filtre par catégorie
+    if (categorieActive !== "tous") {
+      filtered = filtered.filter(doc => doc.categorie === categorieActive);
+    }
+    
+    // Filtre par classe
+    if (classeFiltre) {
+      filtered = filtered.filter(doc => doc.classe === classeFiltre || doc.classe === "Toutes");
+    }
+    
+    // Filtre par matière
+    if (matiereFiltre) {
+      filtered = filtered.filter(doc => doc.matiere === matiereFiltre);
+    }
+    
+    // Pour un enseignant, seulement ses classes
+    if (isTeacher && userClasses.length > 0) {
+      filtered = filtered.filter(doc => 
+        doc.classe === "Toutes" || userClasses.includes(doc.classe)
+      );
+    }
+    
+    return filtered;
+  }, [documents, search, categorieActive, classeFiltre, matiereFiltre, isTeacher, userClasses]);
+
+  // Catégories visibles
+  const visibleCategories = categories.filter(cat => 
+    cat.roles.includes(isAdmin ? "admin" : isTeacher ? "teacher" : "parent")
+  );
 
   const resetFilters = () => {
     setSearch("");
     setCategorieActive("tous");
-    setClasseFiltre("Toutes");
-    setMatiereFiltre("Toutes");
+    setClasseFiltre("");
+    setMatiereFiltre("");
   };
 
-  const addDocument = (docData: Omit<Document, "id">) => {
-    const newId = Math.max(...documents.map(d => d.id), 0) + 1;
-    setDocuments([...documents, { id: newId, ...docData }]);
-    setShowImportModal(false);
+  const addDocument = (newDoc: any) => {
+    setDocuments([newDoc, ...documents]);
   };
 
-  const deleteDocument = (id: number) => {
+  const deleteDocument = async (id: number) => {
+    if (!isAdmin) {
+      alert("Vous n'avez pas les droits pour supprimer des documents.");
+      return;
+    }
+    
     if (confirm("Supprimer ce document définitivement ?")) {
-      setDocuments(documents.filter(d => d.id !== id));
+      try {
+        const headers = { 'Authorization': `Bearer ${token}` };
+        const response = await fetch(`/api/documents?id=${id}`, { method: 'DELETE', headers });
+        
+        if (response.ok) {
+          setDocuments(documents.filter(d => d.id !== id));
+        } else {
+          alert("Erreur lors de la suppression");
+        }
+      } catch (error) {
+        console.error("Erreur suppression:", error);
+        alert("Erreur lors de la suppression");
+      }
     }
   };
 
-  const handleDownload = (doc: Document) => {
+  const handleDownload = (doc: any) => {
     if (doc.url && doc.url !== "#") {
       const a = document.createElement("a");
       a.href = doc.url;
@@ -303,13 +366,21 @@ export default function DocumentsPage() {
     }
   };
 
-  const totalDocs = documents.length;
-  const totalSize = documents.reduce((acc, doc) => {
+  if (loading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
+      </div>
+    );
+  }
+
+  const totalDocs = filteredDocs.length;
+  const totalSize = filteredDocs.reduce((acc, doc) => {
     const size = parseFloat(doc.taille) || 0;
     return acc + size;
   }, 0).toFixed(1);
-  const coursCount = documents.filter(d => d.categorie === "cours").length;
-  const examensCount = documents.filter(d => d.categorie === "examens" || d.categorie === "anciennes-epreuves").length;
+  const coursCount = filteredDocs.filter(d => d.categorie === "cours").length;
+  const examensCount = filteredDocs.filter(d => d.categorie === "examens" || d.categorie === "anciennes-epreuves").length;
 
   return (
     <div className="p-6 space-y-8 bg-gradient-to-br from-slate-50 to-white min-h-screen">
@@ -322,14 +393,20 @@ export default function DocumentsPage() {
             </div>
             Bibliothèque de documents
           </h1>
-          <p className="text-sm text-slate-500 mt-1 ml-14">Cours, examens, archives et ressources pédagogiques</p>
+          <p className="text-sm text-slate-500 mt-1 ml-14">
+            {isAdmin && "Gestion complète des ressources pédagogiques"}
+            {isTeacher && "Partagez vos cours et supports avec vos élèves"}
+            {isParent && "Accédez aux ressources de votre enfant"}
+          </p>
         </div>
-        <button onClick={() => setShowImportModal(true)} className="bg-blue-600 hover:bg-blue-700 text-white px-5 py-2.5 rounded-xl text-sm font-semibold shadow-md shadow-blue-200 flex items-center gap-2 transition-all">
-          <Upload size={18} /> Importer un document
-        </button>
+        {(isAdmin || isTeacher) && (
+          <button onClick={() => setShowImportModal(true)} className="bg-blue-600 hover:bg-blue-700 text-white px-5 py-2.5 rounded-xl text-sm font-semibold shadow-md shadow-blue-200 flex items-center gap-2 transition-all">
+            <Upload size={18} /> Importer un document
+          </button>
+        )}
       </div>
 
-      {/* STATS RAPIDES */}
+      {/* STATS */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
         <div className="bg-white rounded-xl border border-slate-100 p-3 flex items-center gap-3 shadow-sm">
           <div className="p-2 bg-blue-50 rounded-lg"><FileText size={18} className="text-blue-500"/></div>
@@ -349,9 +426,9 @@ export default function DocumentsPage() {
         </div>
       </div>
 
-      {/* CATÉGORIES (onglets) */}
+      {/* CATÉGORIES */}
       <div className="flex flex-wrap gap-2 border-b border-slate-200 pb-2">
-        {categories.map(cat => (
+        {visibleCategories.map(cat => (
           <button
             key={cat.id}
             onClick={() => setCategorieActive(cat.id)}
@@ -367,7 +444,7 @@ export default function DocumentsPage() {
         ))}
       </div>
 
-      {/* BARRE DE RECHERCHE ET FILTRES */}
+      {/* RECHERCHE ET FILTRES */}
       <div className="bg-white rounded-2xl border border-slate-200 p-4 shadow-sm">
         <div className="flex flex-wrap gap-3 items-center justify-between">
           <div className="relative flex-1 min-w-[200px]">
@@ -387,7 +464,7 @@ export default function DocumentsPage() {
                 showFilters ? "bg-blue-50 text-blue-600 border border-blue-200" : "bg-slate-50 text-slate-600 border border-slate-200"
               }`}
             >
-              <Filter size={16} /> Filtres {showFilters ? "▲" : "▼"}
+              <Filter size={16} /> Filtres
             </button>
             <div className="h-8 w-px bg-slate-200 mx-1" />
             <button onClick={() => setViewMode("grid")} className={`p-2 rounded-lg transition ${viewMode === "grid" ? "bg-blue-100 text-blue-600" : "text-slate-400"}`}>
@@ -404,13 +481,19 @@ export default function DocumentsPage() {
             <div>
               <label className="text-xs font-bold text-slate-500 uppercase tracking-wider">Classe</label>
               <select value={classeFiltre} onChange={e => setClasseFiltre(e.target.value)} className="w-full mt-1 p-2 border border-slate-200 rounded-lg text-sm bg-white">
-                {classes.map(c => <option key={c}>{c}</option>)}
+                <option value="">Toutes</option>
+                {(isTeacher ? userClasses : allClasses.map((c: any) => c.nom)).map((c: string) => (
+                  <option key={c}>{c}</option>
+                ))}
               </select>
             </div>
             <div>
               <label className="text-xs font-bold text-slate-500 uppercase tracking-wider">Matière</label>
               <select value={matiereFiltre} onChange={e => setMatiereFiltre(e.target.value)} className="w-full mt-1 p-2 border border-slate-200 rounded-lg text-sm bg-white">
-                {matieresListe.map(m => <option key={m}>{m}</option>)}
+                <option value="">Toutes</option>
+                {(isTeacher ? userMatieres : allMatieres.map((m: any) => m.nom)).map((m: string) => (
+                  <option key={m}>{m}</option>
+                ))}
               </select>
             </div>
             <div className="flex items-end justify-end">
@@ -428,7 +511,7 @@ export default function DocumentsPage() {
       {/* VUE GRILLE */}
       {viewMode === "grid" ? (
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-5">
-          {filteredDocs.map(doc => (
+          {filteredDocs.map((doc: any) => (
             <div key={doc.id} className="group bg-white rounded-2xl border border-slate-200 shadow-sm hover:shadow-md transition-all overflow-hidden">
               <div className="p-4 border-b border-slate-100 flex items-start justify-between">
                 <div className="flex items-center gap-3">
@@ -453,25 +536,19 @@ export default function DocumentsPage() {
                 <button onClick={() => handleDownload(doc)} className="flex-1 py-2 text-xs font-medium bg-blue-50 text-blue-600 rounded-xl hover:bg-blue-100 transition flex items-center justify-center gap-1">
                   <Download size={12} /> Télécharger
                 </button>
-                <button onClick={() => deleteDocument(doc.id)} className="p-2 border border-slate-200 rounded-xl text-slate-400 hover:text-red-500">
-                  <Trash2 size={14} />
-                </button>
+                {isAdmin && (
+                  <button onClick={() => deleteDocument(doc.id)} className="p-2 border border-slate-200 rounded-xl text-slate-400 hover:text-red-500">
+                    <Trash2 size={14} />
+                  </button>
+                )}
               </div>
             </div>
           ))}
         </div>
       ) : (
-        /* VUE TABLEAU */
         <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
           <div className="overflow-x-auto">
-            <table className="w-full text-sm table-fixed">
-              <colgroup>
-                <col className="w-1/3" />
-                <col className="w-1/6" />
-                <col className="w-1/6" />
-                <col className="w-1/6" />
-                <col className="w-1/6" />
-              </colgroup>
+            <table className="w-full text-sm">
               <thead className="bg-slate-50 border-b border-slate-200">
                 <tr className="text-slate-500 text-[11px] font-bold uppercase tracking-wider">
                   <th className="px-5 py-4 text-left">Fichier</th>
@@ -484,7 +561,7 @@ export default function DocumentsPage() {
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100">
-                {filteredDocs.map(doc => (
+                {filteredDocs.map((doc: any) => (
                   <tr key={doc.id} className="hover:bg-slate-50 transition">
                     <td className="px-5 py-3"><div className="flex items-center gap-3">{getFileIcon(doc.type)}<span className="font-medium text-slate-700">{doc.nom}</span></div></td>
                     <td className="px-5 py-3"><span className={`text-[9px] font-bold px-2 py-0.5 rounded-full ${getCategoryColor(doc.categorie)}`}>{categories.find(c => c.id === doc.categorie)?.nom}</span></td>
@@ -495,7 +572,9 @@ export default function DocumentsPage() {
                     <td className="px-5 py-3 text-center">
                       <div className="flex justify-center gap-2">
                         <button onClick={() => handleDownload(doc)} className="p-1.5 text-slate-400 hover:text-blue-500"><Download size={16}/></button>
-                        <button onClick={() => deleteDocument(doc.id)} className="p-1.5 text-slate-400 hover:text-red-500"><Trash2 size={16}/></button>
+                        {isAdmin && (
+                          <button onClick={() => deleteDocument(doc.id)} className="p-1.5 text-slate-400 hover:text-red-500"><Trash2 size={16}/></button>
+                        )}
                       </div>
                     </td>
                   </tr>
@@ -513,7 +592,17 @@ export default function DocumentsPage() {
         </div>
       )}
 
-      {showImportModal && <ImportModal onClose={() => setShowImportModal(false)} onSave={addDocument} />}
+      {showImportModal && (
+        <ImportModal 
+          onClose={() => setShowImportModal(false)} 
+          onSave={addDocument}
+          userRole={isAdmin ? "admin" : isTeacher ? "teacher" : "parent"}
+          userClasses={userClasses}
+          userMatieres={userMatieres}
+          allClasses={allClasses}
+          allMatieres={allMatieres}
+        />
+      )}
     </div>
   );
 }

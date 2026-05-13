@@ -7,8 +7,36 @@
 */
 
 @theme {
-  --color-admin-dark: #1e293b;
-  --color-admin-blue: #3b82f6;
+  /* Primary Colors - Based on Login & Sidebar */
+  --color-primary: #4f46e5;
+  --color-primary-hover: #4338ca;
+  --color-primary-light: #818cf8;
+  --color-primary-dark: #3730a3;
+
+  /* Dark Backgrounds - Based on Sidebar */
+  --color-dark-bg: #1e293b;
+  --color-dark-surface: #0f172a;
+  --color-dark-hover: #334155;
+
+  /* Light Backgrounds */
+  --color-light-bg: #f8fafc;
+  --color-light-surface: #ffffff;
+  --color-light-hover: #f1f5f9;
+
+  /* Text Colors */
+  --color-text-primary: #0f172a;
+  --color-text-secondary: #475569;
+  --color-text-muted: #94a3b8;
+
+  /* Border Colors */
+  --color-border-light: #e2e8f0;
+  --color-border-medium: #cbd5e1;
+
+  /* Status Colors */
+  --color-success: #10b981;
+  --color-warning: #f59e0b;
+  --color-error: #ef4444;
+  --color-info: #3b82f6;
 }
 
 :root {
@@ -27,7 +55,8 @@ body {
   background: #cbd5e1;
   border-radius: 10px;
 }
-/* app/globals.css - Ajoutez cette animation */
+
+/* Animations */
 @keyframes fadeIn {
   from {
     opacity: 0;
@@ -42,29 +71,7 @@ body {
 .animate-fade-in {
   animation: fadeIn 0.3s ease-out;
 }
-/* app/globals.css */
-@keyframes fadeIn {
-  from {
-    opacity: 0;
-    transform: translateY(-10px);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
-}
 
-.animate-fade-in {
-  animation: fadeIn 0.3s ease-out;
-}
-
-/* Breakpoint personnalisé pour très petits écrans */
-@media (min-width: 480px) {
-  .xs\:inline {
-    display: inline;
-  }
-}
-/* app/globals.css */
 @keyframes slideIn {
   from {
     transform: translateX(-100%);
@@ -78,17 +85,22 @@ body {
   animation: slideIn 0.3s ease-out;
 }
 
-@keyframes fadeIn {
-  from {
-    opacity: 0;
-    transform: translateY(-10px);
-  }
-  to {
+@keyframes pulse-slow {
+  0%, 100% {
     opacity: 1;
-    transform: translateY(0);
+  }
+  50% {
+    opacity: 0.5;
   }
 }
 
-.animate-fade-in {
-  animation: fadeIn 0.3s ease-out;
+.animate-pulse-slow {
+  animation: pulse-slow 3s ease-in-out infinite;
+}
+
+/* Breakpoint personnalisé pour très petits écrans */
+@media (min-width: 480px) {
+  .xs\:inline {
+    display: inline;
+  }
 }

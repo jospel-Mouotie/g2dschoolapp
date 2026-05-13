@@ -8,7 +8,22 @@ module.exports = {
     "./components/*.{js,ts,jsx,tsx,mdx}", 
   ],
   theme: {
-    extend: {},
+    extend: {
+      colors: {
+        primary: "rgb(var(--color-primary) / <alpha-value>)",
+        primaryLight: "rgb(var(--color-primary-light) / <alpha-value>)",
+        primaryDark: "rgb(var(--color-primary-dark) / <alpha-value>)",
+        accent: "rgb(var(--color-accent) / <alpha-value>)",
+        accentLight: "rgb(var(--color-accent-light) / <alpha-value>)",
+        accentDark: "rgb(var(--color-accent-dark) / <alpha-value>)",
+        bg: "rgb(var(--color-bg) / <alpha-value>)",
+        surface: "rgb(var(--color-surface) / <alpha-value>)",
+        surface80: "rgb(var(--color-surface-80) / <alpha-value>)",
+        border: "rgb(var(--color-border) / <alpha-value>)",
+        textPrimary: "rgb(var(--color-text-primary) / <alpha-value>)",
+        textMuted: "rgb(var(--color-text-muted) / <alpha-value>)",
+      },
+    },
   },
   plugins: [],
 }

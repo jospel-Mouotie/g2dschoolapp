@@ -1,5 +1,6 @@
+// app/enseignants/page.tsx
 "use client";
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import {
   Users, UserPlus, Search, Filter, Mail, Phone,
@@ -8,7 +9,19 @@ import {
   Trash2, Plus, MoreHorizontal, BadgeCheck, MapPin, Upload,
   Menu
 } from "lucide-react";
-import { useEnseignantsStore, useClassesStore, useNiveauxStore } from "@/lib/stores";
+import { useAuth } from "@/contexts/AuthContext";
+import { useApi } from "@/hooks/useApi";
+
+// Fonction utilitaire en dehors du composant pour éviter les problèmes de hooks
+function parseJsonField(field: any): string[] {
+  if (!field) return [];
+  if (Array.isArray(field)) return field;
+  try {
+    return JSON.parse(field);
+  } catch {
+    return [];
+  }
+}
 
 function getPhotoUrl(enseignant: any): string {
   if (enseignant.photo && (enseignant.photo.startsWith('http') || enseignant.photo.startsWith('data:image'))) return enseignant.photo;
@@ -67,8 +80,27 @@ function EnseignantModal({ enseignant, onSave, onClose, allMatieres, allClasses 
     status: enseignant?.status || "Titulaire",
     photo: enseignant?.photo || "",
   });
-  const [selectedMatieres, setSelectedMatieres] = useState<string[]>(enseignant?.matieres || []);
-  const [selectedClasses, setSelectedClasses] = useState<string[]>(enseignant?.classes || []);
+  
+  const [selectedMatieres, setSelectedMatieres] = useState<string[]>(() => {
+    if (!enseignant?.matieres) return [];
+    if (Array.isArray(enseignant.matieres)) return enseignant.matieres;
+    try {
+      return JSON.parse(enseignant.matieres);
+    } catch {
+      return [];
+    }
+  });
+  
+  const [selectedClasses, setSelectedClasses] = useState<string[]>(() => {
+    if (!enseignant?.classes) return [];
+    if (Array.isArray(enseignant.classes)) return enseignant.classes;
+    try {
+      return JSON.parse(enseignant.classes);
+    } catch {
+      return [];
+    }
+  });
+  
   const [showMatiereModal, setShowMatiereModal] = useState(false);
   const [showClasseModal, setShowClasseModal] = useState(false);
   const [previewPhoto, setPreviewPhoto] = useState(form.photo);
@@ -179,56 +211,149 @@ function EnseignantModal({ enseignant, onSave, onClose, allMatieres, allClasses 
 }
 
 export default function EnseignantsPage() {
+  const { isAdmin, isLoading: authLoading, token } = useAuth();
+  const { fetchWithAuth } = useApi();
   const router = useRouter();
-  const [enseignants, setEnseignants] = useEnseignantsStore();
-  const [classes] = useClassesStore();
-  const [niveaux] = useNiveauxStore();
+  const [enseignants, setEnseignants] = useState<any[]>([]);
+  const [classes, setClasses] = useState<any[]>([]);
+  const [niveaux, setNiveaux] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const [search, setSearch] = useState("");
   const [viewMode, setViewMode] = useState<"grid" | "table">("grid");
   const [filters, setFilters] = useState({ statut: "Tous", matiere: "", classe: "" });
   const [showFilters, setShowFilters] = useState(false);
   const [showModal, setShowModal] = useState(false);
   const [editing, setEditing] = useState<any>(null);
-  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
-  const allMatieres = useMemo(() => Array.from(new Set(enseignants.flatMap(e => e.matieres))).sort(), [enseignants]);
-  const allClasses = useMemo(() => Array.from(new Set(enseignants.flatMap(e => e.classes))).sort(), [enseignants]);
+  // Charger les données depuis l'API avec authentification
+  useEffect(() => {
+    const fetchData = async () => {
+      if (!token) {
+        setLoading(false);
+        return;
+      }
+      
+      try {
+        const [enseignantsRes, classesRes, niveauxRes] = await Promise.all([
+          fetchWithAuth('/api/enseignants'),
+          fetchWithAuth('/api/classes'),
+          fetchWithAuth('/api/niveaux'),
+        ]);
+        
+        setEnseignants(Array.isArray(enseignantsRes) ? enseignantsRes : []);
+        setClasses(Array.isArray(classesRes) ? classesRes : []);
+        setNiveaux(Array.isArray(niveauxRes) ? niveauxRes : []);
+        setError(null);
+      } catch (error) {
+        console.error('Erreur chargement:', error);
+        setError("Erreur de chargement des données");
+        setEnseignants([]);
+        setClasses([]);
+        setNiveaux([]);
+      } finally {
+        setLoading(false);
+      }
+    };
+    
+    fetchData();
+  }, [token, fetchWithAuth]);
+
+  // Protection admin
+  useEffect(() => {
+    if (!authLoading && !isAdmin) {
+      router.push('/');
+    }
+  }, [authLoading, isAdmin, router]);
+
+  // Extraire toutes les matières et classes uniques
+  const allMatieres = useMemo(() => {
+    if (!Array.isArray(enseignants)) return [];
+    const matieresSet = new Set();
+    enseignants.forEach((e: any) => {
+      const matieres = parseJsonField(e.matieres);
+      matieres.forEach((m: string) => matieresSet.add(m));
+    });
+    return Array.from(matieresSet).sort();
+  }, [enseignants]);
+
+  const allClasses = useMemo(() => {
+    if (!Array.isArray(enseignants)) return [];
+    const classesSet = new Set();
+    enseignants.forEach((e: any) => {
+      const classesList = parseJsonField(e.classes);
+      classesList.forEach((c: string) => classesSet.add(c));
+    });
+    return Array.from(classesSet).sort();
+  }, [enseignants]);
+
   const statuts = ["Tous", "Titulaire", "Contractuel", "Contractuelle", "Vacataire"];
 
+  // Filtrer les enseignants
   const filtered = useMemo(() => {
-    return enseignants.filter(e => {
-      const matchSearch = e.name.toLowerCase().includes(search.toLowerCase()) ||
-                          e.email.toLowerCase().includes(search.toLowerCase()) ||
-                          e.matieres.some(m => m.toLowerCase().includes(search.toLowerCase()));
+    if (!Array.isArray(enseignants)) return [];
+    return enseignants.filter((e: any) => {
+      const matieresList = parseJsonField(e.matieres);
+      const classesList = parseJsonField(e.classes);
+      
+      const matchSearch = e.name?.toLowerCase().includes(search.toLowerCase()) ||
+                          e.email?.toLowerCase().includes(search.toLowerCase()) ||
+                          matieresList.some((m: string) => m.toLowerCase().includes(search.toLowerCase()));
       const matchStatut = filters.statut === "Tous" || e.status === filters.statut;
-      const matchMatiere = !filters.matiere || e.matieres.includes(filters.matiere);
-      const matchClasse = !filters.classe || e.classes.includes(filters.classe);
+      const matchMatiere = !filters.matiere || matieresList.includes(filters.matiere);
+      const matchClasse = !filters.classe || classesList.includes(filters.classe);
       return matchSearch && matchStatut && matchMatiere && matchClasse;
     });
   }, [enseignants, search, filters]);
 
   const stats = useMemo(() => {
+    if (!Array.isArray(enseignants)) return { total: 0, titulaires: 0, vacataires: 0, taux: "0" };
     const total = enseignants.length;
-    const titulaires = enseignants.filter(e => e.status === "Titulaire").length;
-    const vacataires = enseignants.filter(e => e.status === "Vacataire").length;
+    const titulaires = enseignants.filter((e: any) => e.status === "Titulaire").length;
+    const vacataires = enseignants.filter((e: any) => e.status === "Vacataire").length;
     const taux = total ? (total / 548 * 100).toFixed(1) : "0";
     return { total, titulaires, vacataires, taux };
   }, [enseignants]);
-
-  const saveEnseignant = (data: any) => {
+const saveEnseignant = async (data: any) => {
+  try {
+    const payload = {
+      ...data,
+      matieres: JSON.stringify(data.matieres),
+      classes: JSON.stringify(data.classes),
+    };
+    
+    let response: any; // Ajout du type explicite
+    
     if (editing) {
-      setEnseignants(enseignants.map(e => e.id === editing.id ? { ...editing, ...data } : e));
+      response = await fetchWithAuth(`/api/enseignants/${editing.id}`, {
+        method: 'PUT',
+        body: JSON.stringify(payload),
+      });
+      setEnseignants(enseignants.map((e: any) => e.id === editing.id ? response : e));
     } else {
-      const newId = Math.max(...enseignants.map(e => e.id), 0) + 1;
-      setEnseignants([...enseignants, { id: newId, ...data, enseignements: [] }]);
+      response = await fetchWithAuth('/api/enseignants', {
+        method: 'POST',
+        body: JSON.stringify(payload),
+      });
+      setEnseignants([...enseignants, response]);
     }
     setShowModal(false);
     setEditing(null);
-  };
+  } catch (error) {
+    console.error('Erreur sauvegarde:', error);
+    alert('Erreur lors de la sauvegarde');
+  }
+};
 
-  const deleteEnseignant = (id: number) => {
+  const deleteEnseignant = async (id: number) => {
     if (confirm("Supprimer définitivement ?")) {
-      setEnseignants(enseignants.filter(e => e.id !== id));
+      try {
+        await fetchWithAuth(`/api/enseignants/${id}`, { method: 'DELETE' });
+        setEnseignants(enseignants.filter((e: any) => e.id !== id));
+      } catch (error) {
+        console.error('Erreur suppression:', error);
+        alert('Erreur lors de la suppression');
+      }
     }
   };
 
@@ -236,6 +361,35 @@ export default function EnseignantsPage() {
     setFilters({ statut: "Tous", matiere: "", classe: "" });
     setSearch("");
   };
+
+  if (authLoading || loading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-indigo-600"></div>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="min-h-screen flex flex-col items-center justify-center p-4">
+        <div className="bg-red-50 border border-red-200 rounded-2xl p-6 max-w-md text-center">
+          <h2 className="text-xl font-bold text-red-700 mb-2">Erreur de chargement</h2>
+          <p className="text-red-600 mb-4">{error}</p>
+          <button 
+            onClick={() => window.location.reload()} 
+            className="px-4 py-2 bg-red-600 text-white rounded-xl hover:bg-red-700"
+          >
+            Réessayer
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  if (!isAdmin) {
+    return null;
+  }
 
   return (
     <div className="p-4 sm:p-6 md:p-8 bg-[#fdfdff] min-h-screen font-sans text-slate-900">
@@ -334,7 +488,7 @@ export default function EnseignantsPage() {
                 className="px-3 py-2 border rounded-xl text-sm bg-white"
               >
                 <option value="">Toutes matières</option>
-                {allMatieres.map(m => <option key={m}>{m}</option>)}
+                {allMatieres.map((m: any) => <option key={m}>{m}</option>)}
               </select>
               <select 
                 value={filters.classe} 
@@ -342,7 +496,7 @@ export default function EnseignantsPage() {
                 className="px-3 py-2 border rounded-xl text-sm bg-white"
               >
                 <option value="">Toutes classes</option>
-                {allClasses.map(c => <option key={c}>{c}</option>)}
+                {allClasses.map((c: any) => <option key={c}>{c}</option>)}
               </select>
             </div>
             <button onClick={resetFilters} className="mt-3 text-xs text-indigo-600 font-medium hover:text-indigo-800 transition">
@@ -352,11 +506,12 @@ export default function EnseignantsPage() {
         )}
       </div>
 
-      {/* VUE GRILLE - RESPONSIVE */}
+      {/* VUE GRILLE */}
       {viewMode === "grid" ? (
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 sm:gap-6">
-          {filtered.map(ens => {
+          {filtered.map((ens: any) => {
             const photoUrl = getPhotoUrl(ens);
+            const matieresList = parseJsonField(ens.matieres);
             return (
               <div key={ens.id} className="group bg-white rounded-xl sm:rounded-2xl lg:rounded-[2.5rem] border border-slate-100 p-4 sm:p-6 hover:shadow-2xl hover:shadow-indigo-100/50 hover:-translate-y-1 transition-all duration-300">
                 <div className="flex justify-between items-start mb-4 sm:mb-5">
@@ -377,8 +532,8 @@ export default function EnseignantsPage() {
                   </div>
                 </div>
                 <div className="flex flex-wrap gap-1 mb-4 sm:mb-6">
-                  {ens.matieres.slice(0, 2).map(m => <span key={m} className="bg-indigo-50 text-indigo-600 text-[8px] sm:text-[9px] font-black px-1.5 sm:px-2 py-0.5 sm:py-1 rounded-md uppercase tracking-wider">{m}</span>)}
-                  {ens.matieres.length > 2 && <span className="text-slate-300 text-[8px] sm:text-[9px] font-bold p-1">+{ens.matieres.length - 2}</span>}
+                  {matieresList.slice(0, 2).map((m: string) => <span key={m} className="bg-indigo-50 text-indigo-600 text-[8px] sm:text-[9px] font-black px-1.5 sm:px-2 py-0.5 sm:py-1 rounded-md uppercase tracking-wider">{m}</span>)}
+                  {matieresList.length > 2 && <span className="text-slate-300 text-[8px] sm:text-[9px] font-bold p-1">+{matieresList.length - 2}</span>}
                 </div>
                 <div className="flex gap-2">
                   <button onClick={() => router.push(`/enseignants/${ens.id}`)} className="flex-1 py-2 sm:py-3 bg-slate-900 text-white rounded-lg sm:rounded-xl text-[9px] sm:text-[10px] font-black uppercase tracking-widest hover:bg-indigo-600 transition-all shadow-lg shadow-slate-200">
@@ -396,7 +551,6 @@ export default function EnseignantsPage() {
           })}
         </div>
       ) : (
-        /* VUE TABLEAU - RESPONSIVE avec défilement horizontal */
         <div className="bg-white rounded-xl sm:rounded-[2rem] border border-slate-100 shadow-sm overflow-x-auto">
           <div className="min-w-[768px]">
             <table className="w-full text-sm">
@@ -411,8 +565,10 @@ export default function EnseignantsPage() {
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-50">
-                {filtered.map(ens => {
+                {filtered.map((ens: any) => {
                   const photoUrl = getPhotoUrl(ens);
+                  const matieresList = parseJsonField(ens.matieres);
+                  const classesList = parseJsonField(ens.classes);
                   return (
                     <tr key={ens.id} className="hover:bg-slate-50/80 transition-all group cursor-pointer" onClick={() => router.push(`/enseignants/${ens.id}`)}>
                       <td className="px-3 sm:px-4 py-2 sm:py-3">
@@ -427,27 +583,27 @@ export default function EnseignantsPage() {
                       <td className="px-3 sm:px-4 py-2 sm:py-3 text-[11px] sm:text-xs text-slate-500 truncate">{ens.phone}</td>
                       <td className="px-3 sm:px-4 py-2 sm:py-3">
                         <div className="flex gap-1 flex-wrap">
-                          {ens.matieres.slice(0, 2).map(m => <span key={m} className="bg-indigo-50 text-indigo-600 text-[8px] sm:text-[9px] font-black px-1.5 sm:px-2 py-0.5 sm:py-1 rounded-md uppercase whitespace-nowrap">{m}</span>)}
-                          {ens.matieres.length > 2 && <span className="text-[8px] sm:text-[9px] text-slate-400">+{ens.matieres.length-2}</span>}
+                          {matieresList.slice(0, 2).map((m: string) => <span key={m} className="bg-indigo-50 text-indigo-600 text-[8px] sm:text-[9px] font-black px-1.5 sm:px-2 py-0.5 sm:py-1 rounded-md uppercase whitespace-nowrap">{m}</span>)}
+                          {matieresList.length > 2 && <span className="text-[8px] sm:text-[9px] text-slate-400">+{matieresList.length-2}</span>}
                         </div>
                       </td>
                       <td className="px-3 sm:px-4 py-2 sm:py-3">
                         <p className="text-[9px] sm:text-[10px] font-bold text-slate-500 uppercase truncate">
-                          {ens.classes.slice(0, 2).join(", ")}{ens.classes.length > 2 && " +" + (ens.classes.length-2)}
+                          {classesList.slice(0, 2).join(", ")}{classesList.length > 2 && " +" + (classesList.length-2)}
                         </p>
-                       </td>
+                      </td>
                       <td className="px-3 sm:px-4 py-2 sm:py-3">
                         <span className={`text-[8px] sm:text-[9px] font-black px-2 sm:px-3 py-1 rounded-full uppercase tracking-widest whitespace-nowrap ${ens.status === 'Titulaire' ? 'bg-emerald-50 text-emerald-600' : 'bg-orange-50 text-orange-600'}`}>
                           {ens.status}
                         </span>
-                       </td>
+                      </td>
                       <td className="px-3 sm:px-4 py-2 sm:py-3 text-center" onClick={e => e.stopPropagation()}>
                         <div className="flex justify-center gap-1 sm:gap-2">
                           <button onClick={() => router.push(`/enseignants/${ens.id}`)} className="p-1 text-slate-400 hover:text-indigo-600"><Eye size={14} className="sm:w-4 sm:h-4"/></button>
                           <button onClick={() => { setEditing(ens); setShowModal(true); }} className="p-1 text-slate-400 hover:text-indigo-600"><Edit size={14} className="sm:w-4 sm:h-4"/></button>
                           <button onClick={() => deleteEnseignant(ens.id)} className="p-1 text-slate-400 hover:text-red-500"><Trash2 size={14} className="sm:w-4 sm:h-4"/></button>
                         </div>
-                       </td>
+                      </td>
                     </tr>
                   );
                 })}
@@ -457,7 +613,6 @@ export default function EnseignantsPage() {
         </div>
       )}
 
-      {/* MESSAGE SI AUCUN RÉSULTAT */}
       {filtered.length === 0 && (
         <div className="text-center py-12">
           <div className="text-slate-300 text-6xl mb-4">👨‍🏫</div>

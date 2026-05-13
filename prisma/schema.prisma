@@ -1,0 +1,329 @@
+// prisma/schema.prisma
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ========== AUTHENTIFICATION ==========
+model Utilisateur {
+  id                Int         @id @default(autoincrement())
+  email             String      @unique
+  motDePasse        String
+  nom               String
+  telephone         String?
+  role              Role
+  eleveId           Int?        @unique
+  enseignantId      Int?        @unique
+  actif             Boolean     @default(true)
+  derniereConnexion DateTime?
+  createdAt         DateTime    @default(now())
+  sessions          Session[]
+  eleve             Eleve?      @relation(fields: [eleveId], references: [id])
+  enseignant        Enseignant? @relation(fields: [enseignantId], references: [id])
+}
+
+model Session {
+  id             String      @id @default(cuid())
+  utilisateurId  Int
+  token          String      @unique
+  expiresAt      DateTime
+  createdAt      DateTime    @default(now())
+  utilisateur    Utilisateur @relation(fields: [utilisateurId], references: [id])
+}
+
+// ========== ENSEIGNANTS ==========
+model Enseignant {
+  id            Int           @id @default(autoincrement())
+  name          String
+  email         String        @unique
+  phone         String
+  matieres      String        // Stocké comme JSON string
+  classes       String        // Stocké comme JSON string
+  status        String        @default("Titulaire")
+  photo         String?
+  bureau        String?
+  horaires      String?
+  utilisateur   Utilisateur?
+  enseignements Enseignement[]
+  cours         Cours[]
+  absences      Absence[]
+}
+
+model Enseignement {
+  id            Int        @id @default(autoincrement())
+  matiere       String
+  classe        String
+  estPrincipal  Boolean    @default(false)
+  enseignantId  Int
+  enseignant    Enseignant @relation(fields: [enseignantId], references: [id])
+}
+
+// ========== ÉLÈVES ==========
+model Eleve {
+  id                   Int      @id @default(autoincrement())
+  nom                  String
+  classe               String
+  matricule            String   @unique
+  statusColor          String   @default("bg-emerald-400")
+  img                  String?
+  photo                String?
+  email                String?
+  telephone            String?
+  dateNaissance        String?
+  lieuNaissance        String?
+  nationalite          String?  @default("Camerounaise")
+  sexe                 String?  @default("M")
+  adresse              String?
+  parentNom            String?
+  parentTelephone      String?
+  parentEmail          String?
+  parentProfession     String?
+  dateInscription      String?
+  ancienEtablissement  String?
+  redoublant           Boolean? @default(false)
+  situationFamiliale   String?
+  nomComplet           String?
+  selected             Boolean? @default(false)
+  moyenne              String?
+  noteColor            String?
+  utilisateur          Utilisateur?
+  notes                Note[]
+  transactions         Transaction[]
+  absences             Absence[]
+  appelsDetails        AppelDetail[]
+}
+
+// ========== COURS ET MODULES ==========
+model Cours {
+  id           String    @id @default(cuid())
+  matiere      String
+  professeur   String
+  salle        String?
+  classe       String
+  jour         String
+  heure        String
+  duree        Float
+  progress     Int       @default(0)
+  status       String    @default("En cours")
+  students     Int       @default(0)
+  coefficient  Int       @default(1)
+  hoursPerWeek Int       @default(1)
+  image        String?
+  enseignantId Int?
+  enseignant   Enseignant? @relation(fields: [enseignantId], references: [id])
+  modules      Module[]
+  absences     Absence[]
+  appels       Appel[]
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+}
+
+model Module {
+  id          String    @id @default(cuid())
+  titre       String
+  description String?
+  coursId     String
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  
+  cours       Cours     @relation(fields: [coursId], references: [id], onDelete: Cascade)
+  chapitres   Chapitre[]
+}
+
+model Chapitre {
+  id          Int       @id @default(autoincrement())
+  titre       String
+  description String?
+  duree       Int       @default(60)
+  estFait     Boolean   @default(false)
+  moduleId    String
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  
+  module      Module    @relation(fields: [moduleId], references: [id], onDelete: Cascade)
+}
+
+// ========== NOTES ==========
+model Note {
+  id           Int      @id @default(autoincrement())
+  eleveId      Int
+  matiereId    String
+  periode      String
+  eval1        Float?
+  eval2        Float?
+  moyenne      Float?
+  appreciation String?
+  eleve        Eleve    @relation(fields: [eleveId], references: [id])
+  matiere      Matiere  @relation(fields: [matiereId], references: [id])
+}
+
+model Matiere {
+  id          String   @id
+  nom         String   @unique
+  coefficient Int
+  description String?
+  notes       Note[]
+}
+
+// ========== ABSENCES ET APPELS ==========
+model Absence {
+  id            Int        @id @default(autoincrement())
+  eleveId       Int
+  eleve         Eleve      @relation(fields: [eleveId], references: [id])
+  coursId       String
+  cours         Cours      @relation(fields: [coursId], references: [id])
+  date         DateTime   @default(now())
+  heureDebut   String
+  heureFin     String
+  duree        Float
+  justifiee    Boolean    @default(false)
+  motif        String?
+  enseignantId Int
+  enseignant   Enseignant @relation(fields: [enseignantId], references: [id])
+  createdAt    DateTime   @default(now())
+  heuresAbsence Float     @default(0)
+  semestre      String?
+  mois          String?
+  anneeScolaire String?
+}
+
+model Appel {
+  id            Int           @id @default(autoincrement())
+  coursId       String
+  cours         Cours         @relation(fields: [coursId], references: [id])
+  date          DateTime      @default(now())
+  heure         String
+  effectuePar   Int
+  createdAt     DateTime      @default(now())
+  appelsDetails AppelDetail[]
+}
+
+model AppelDetail {
+  id          Int      @id @default(autoincrement())
+  appelId     Int
+  appel       Appel    @relation(fields: [appelId], references: [id])
+  eleveId     Int
+  eleve       Eleve    @relation(fields: [eleveId], references: [id])
+  present     Boolean  @default(true)
+  justifiee   Boolean  @default(false)
+  motif       String?
+}
+
+// ========== FINANCES ==========
+model Transaction {
+  id            Int      @id @default(autoincrement())
+  eleve         String
+  classe        String
+  type          String
+  montant       Int
+  date          String
+  statut        String   @default("impayé")
+  methode       String
+  reference     String?
+  eleveId       Int?
+  eleveRelation Eleve?   @relation(fields: [eleveId], references: [id])
+}
+
+model FraisNiveau {
+  id          String   @id @default(cuid())
+  niveau      String   @unique
+  montant     Int
+  description String?
+}
+
+// ========== DOCUMENTS ==========
+model Document {
+  id            Int      @id @default(autoincrement())
+  nom           String
+  type          String
+  categorie     String
+  classe        String
+  matiere       String?
+  taille        String
+  date          String
+  url           String
+  auteur        String
+  auteurId      Int?
+  approuve      Boolean  @default(false)
+  telechargements Int    @default(0)
+  favori        Boolean  @default(false)
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+}
+
+// ========== COMMUNICATION ==========
+model Message {
+  id                 Int      @id @default(autoincrement())
+  expediteur         String
+  expediteurRole     String
+  expediteurAvatar   String
+  destinataireClasse String
+  contenu            String
+  date               DateTime @default(now())
+  lu                 Boolean  @default(false)
+  pieceJointe        String?
+}
+
+// ========== PARAMÈTRES ==========
+model Salle {
+  id          String   @id @default(cuid())
+  nom         String   @unique
+  capacite    Int
+  batiment    String
+  equipements String?
+  description String?
+}
+
+model Niveau {
+  id          String   @id @default(cuid())
+  nom         String   @unique
+  ordre       Int
+  description String?
+  classes     Classe[]
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
+model Classe {
+  id          String   @id @default(cuid())
+  nom         String   @unique
+  niveauId    String
+  effectif    Int?
+  niveau      Niveau   @relation(fields: [niveauId], references: [id])
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
+model Etablissement {
+  id            String   @id @default(cuid())
+  nom           String
+  logo          String?
+  adresse       String
+  telephone     String
+  email         String
+  devise        String?  @default("FCFA")
+  anneeScolaire String
+  region        String?
+  delegation    String?
+  departement   String?
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+}
+
+model Pause {
+  id          String   @id @default(cuid())
+  heureDebut  String
+  heureFin    String
+  description String
+}
+
+// ========== ENUMS ==========
+enum Role {
+  admin
+  enseignant
+  parent
+}

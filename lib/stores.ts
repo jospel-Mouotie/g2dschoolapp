@@ -155,7 +155,6 @@ export interface Transaction {
   reference?: string;
 }
 
-// Interface NOTE avec deux évaluations (eval1 et eval2)
 export interface Note {
   eleveId: number;
   eval1: number | null;
@@ -271,7 +270,29 @@ export interface Commentaire {
   date: string;
 }
 
-// ========== FONCTION POUR CALCULER LA MOYENNE ==========
+export interface Utilisateur {
+  id: number;
+  email: string;
+  motDePasse: string;
+  nom: string;
+  role: "admin" | "enseignant" | "parent";
+  eleveId?: number;
+  enseignantId?: number;
+  actif: boolean;
+  derniereConnexion?: string;
+  createdAt: string;
+}
+
+export interface Session {
+  id: string;
+  utilisateurId: number;
+  token: string;
+  expiresAt: string;
+  createdAt: string;
+}
+
+// ========== FONCTIONS UTILITAIRES ==========
+
 function calculerMoyenne(e1: number | null, e2: number | null): number | null {
   if (e1 !== null && e2 !== null) return Number(((e1 + e2) / 2).toFixed(1));
   if (e1 !== null) return e1;
@@ -289,11 +310,17 @@ function getAppreciation(note: number | null): string {
   return "Insuffisant";
 }
 
+export function generateParentPassword(parentNom: string): string {
+  if (!parentNom) return "parent123";
+  const prenom = parentNom.split(' ')[0].toLowerCase();
+  const prenomNormalise = prenom.normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+  return `${prenomNormalise}123`;
+}
+
 // ========== GÉNÉRATION DES NOTES DE TEST ==========
 function genererNotesTest(): Record<string, Note[]> {
   const notes: Record<string, Note[]> = {};
   
-  // Classes avec leurs élèves
   const classesData: Record<string, { id: number; nom: string }[]> = {
     "6A": [
       { id: 1, nom: "Jean Mbélé" },
@@ -310,7 +337,6 @@ function genererNotesTest(): Record<string, Note[]> {
     ]
   };
 
-  // Matières avec leurs IDs
   const matieresList = [
     { id: "maths", nom: "MATHÉMATIQUES", coefficient: 4 },
     { id: "francais", nom: "FRANÇAIS", coefficient: 3 },
@@ -324,9 +350,7 @@ function genererNotesTest(): Record<string, Note[]> {
 
   const periodes = ["1er TRIMESTRE", "2ème TRIMESTRE", "3ème TRIMESTRE"];
 
-  // Données de notes pour chaque élève, matière et période
   const notesData: Record<string, Record<string, Record<string, { eval1: number | null; eval2: number | null }>>> = {
-    // Jean Mbélé (6A)
     "1": {
       "maths": {
         "1er TRIMESTRE": { eval1: 12, eval2: 14 },
@@ -369,7 +393,6 @@ function genererNotesTest(): Record<string, Note[]> {
         "3ème TRIMESTRE": { eval1: 14, eval2: 16 }
       }
     },
-    // Émile Tamko (6A)
     "4": {
       "maths": {
         "1er TRIMESTRE": { eval1: 8, eval2: 10 },
@@ -412,7 +435,6 @@ function genererNotesTest(): Record<string, Note[]> {
         "3ème TRIMESTRE": { eval1: 10, eval2: 12 }
       }
     },
-    // Elise Nend (5B)
     "2": {
       "maths": {
         "1er TRIMESTRE": { eval1: 14, eval2: 16 },
@@ -455,7 +477,6 @@ function genererNotesTest(): Record<string, Note[]> {
         "3ème TRIMESTRE": { eval1: 15, eval2: 17 }
       }
     },
-    // Dider Fongang (4A)
     "3": {
       "maths": {
         "1er TRIMESTRE": { eval1: 6, eval2: 8 },
@@ -498,7 +519,6 @@ function genererNotesTest(): Record<string, Note[]> {
         "3ème TRIMESTRE": { eval1: 8, eval2: 10 }
       }
     },
-    // Nadia Ebwelle (Terminale A)
     "5": {
       "maths": {
         "1er TRIMESTRE": { eval1: 17, eval2: 19 },
@@ -543,7 +563,6 @@ function genererNotesTest(): Record<string, Note[]> {
     }
   };
 
-  // Générer les notes pour chaque classe, matière et période
   for (const [classe, eleves] of Object.entries(classesData)) {
     for (const matiere of matieresList) {
       for (const periode of periodes) {
@@ -566,7 +585,6 @@ function genererNotesTest(): Record<string, Note[]> {
               appreciation
             });
           } else {
-            // Si pas de données, mettre des valeurs par défaut
             notesList.push({
               eleveId: eleve.id,
               eval1: null,
@@ -589,11 +607,11 @@ function genererNotesTest(): Record<string, Note[]> {
 
 export function useElevesStore() {
   const initialEleves: Eleve[] = [
-    { id: 1, nom: "Jean Mbélé", classe: "6A", matricule: "9/02 410", statusColor: "bg-emerald-400", img: "https://images.unsplash.com/photo-1531384441138-2736e62e0919?w=100&h=100&fit=crop", parentTelephone: "+237 612345678", parentEmail: "parent.jean@example.com", dateNaissance: "2012-05-15", lieuNaissance: "Douala" },
-    { id: 2, nom: "Elise Nend", classe: "5B", matricule: "5/22,000", statusColor: "bg-teal-400", img: "https://images.unsplash.com/photo-1531123897727-8f129e16fd3c?w=100&h=100&fit=crop", selected: true, parentTelephone: "+237 623456789", parentEmail: "parent.elise@example.com", dateNaissance: "2011-08-22", lieuNaissance: "Yaoundé" },
-    { id: 3, nom: "Dider Fongang", classe: "4A", matricule: "8/163 410", statusColor: "bg-sky-400", img: "https://images.unsplash.com/photo-1506277886164-e25aa3f4ef7f?w=100&h=100&fit=crop", parentTelephone: "+237 634567890", parentEmail: "parent.dider@example.com", dateNaissance: "2010-03-10", lieuNaissance: "Bafoussam" },
-    { id: 4, nom: "Émile Tamko", classe: "6A", matricule: "5/02,003", statusColor: "bg-indigo-400", img: "https://images.unsplash.com/photo-1566492031773-4f4e44671857?w=100&h=100&fit=crop", parentTelephone: "+237 645678901", parentEmail: "parent.emile@example.com", dateNaissance: "2012-11-30", lieuNaissance: "Douala" },
-    { id: 5, nom: "Nadia Ebwelle", classe: "Terminale A", matricule: "5/07/223", statusColor: "bg-amber-400", img: "https://images.unsplash.com/photo-1589156280159-27698a70f29e?w=100&h=100&fit=crop", parentTelephone: "+237 656789012", parentEmail: "parent.nadia@example.com", dateNaissance: "2006-07-18", lieuNaissance: "Yaoundé" },
+    { id: 1, nom: "Jean Mbélé", classe: "6A", matricule: "9/02 410", statusColor: "bg-emerald-400", img: "https://images.unsplash.com/photo-1531384441138-2736e62e0919?w=100&h=100&fit=crop", parentNom: "Parent Jean Mbélé", parentTelephone: "+237 612345678", parentEmail: "parent.jean@example.com", dateNaissance: "2012-05-15", lieuNaissance: "Douala" },
+    { id: 2, nom: "Elise Nend", classe: "5B", matricule: "5/22,000", statusColor: "bg-teal-400", img: "https://images.unsplash.com/photo-1531123897727-8f129e16fd3c?w=100&h=100&fit=crop", selected: true, parentNom: "Parent Elise Nend", parentTelephone: "+237 623456789", parentEmail: "parent.elise@example.com", dateNaissance: "2011-08-22", lieuNaissance: "Yaoundé" },
+    { id: 3, nom: "Dider Fongang", classe: "4A", matricule: "8/163 410", statusColor: "bg-sky-400", img: "https://images.unsplash.com/photo-1506277886164-e25aa3f4ef7f?w=100&h=100&fit=crop", parentNom: "Parent Dider Fongang", parentTelephone: "+237 634567890", parentEmail: "parent.dider@example.com", dateNaissance: "2010-03-10", lieuNaissance: "Bafoussam" },
+    { id: 4, nom: "Émile Tamko", classe: "6A", matricule: "5/02,003", statusColor: "bg-indigo-400", img: "https://images.unsplash.com/photo-1566492031773-4f4e44671857?w=100&h=100&fit=crop", parentNom: "Parent Émile Tamko", parentTelephone: "+237 645678901", parentEmail: "parent.emile@example.com", dateNaissance: "2012-11-30", lieuNaissance: "Douala" },
+    { id: 5, nom: "Nadia Ebwelle", classe: "Terminale A", matricule: "5/07/223", statusColor: "bg-amber-400", img: "https://images.unsplash.com/photo-1589156280159-27698a70f29e?w=100&h=100&fit=crop", parentNom: "Parent Nadia Ebwelle", parentTelephone: "+237 656789012", parentEmail: "parent.nadia@example.com", dateNaissance: "2006-07-18", lieuNaissance: "Yaoundé" },
   ];
   return useIndexedDB("eleves", initialEleves);
 }
@@ -648,7 +666,6 @@ export function useTransactionsStore() {
 }
 
 export function useNotesStore() {
-  // Générer des données de test pour les notes
   const initialNotes: Record<string, Note[]> = genererNotesTest();
   return useIndexedDB("notes", initialNotes);
 }
@@ -773,4 +790,233 @@ export function usePausesStore() {
     { id: "1", heureDebut: "12:00", heureFin: "14:00", description: "Pause déjeuner" },
   ];
   return useIndexedDB("pauses", initialPauses);
+}
+
+// ========== STORE UTILISATEURS ==========
+export function useUtilisateursStore() {
+  const initialUtilisateurs: Utilisateur[] = [
+    {
+      id: 1,
+      email: "admin@lyceedeido.cm",
+      motDePasse: "admin123",
+      nom: "Administrateur",
+      role: "admin",
+      actif: true,
+      createdAt: new Date().toISOString()
+    },
+    {
+      id: 2,
+      email: "kanga@lyceedeido.cm",
+      motDePasse: "teacher123",
+      nom: "M. Kanga",
+      role: "enseignant",
+      enseignantId: 1,
+      actif: true,
+      createdAt: new Date().toISOString()
+    },
+    {
+      id: 3,
+      email: "parent.jean@example.com",
+      motDePasse: generateParentPassword("Parent Jean Mbélé"),
+      nom: "Parent Jean Mbélé",
+      role: "parent",
+      eleveId: 1,
+      actif: true,
+      createdAt: new Date().toISOString()
+    },
+    {
+      id: 4,
+      email: "parent.elise@example.com",
+      motDePasse: generateParentPassword("Parent Elise Nend"),
+      nom: "Parent Elise Nend",
+      role: "parent",
+      eleveId: 2,
+      actif: true,
+      createdAt: new Date().toISOString()
+    },
+    {
+      id: 5,
+      email: "parent.dider@example.com",
+      motDePasse: generateParentPassword("Parent Dider Fongang"),
+      nom: "Parent Dider Fongang",
+      role: "parent",
+      eleveId: 3,
+      actif: true,
+      createdAt: new Date().toISOString()
+    },
+    {
+      id: 6,
+      email: "parent.emile@example.com",
+      motDePasse: generateParentPassword("Parent Émile Tamko"),
+      nom: "Parent Émile Tamko",
+      role: "parent",
+      eleveId: 4,
+      actif: true,
+      createdAt: new Date().toISOString()
+    },
+    {
+      id: 7,
+      email: "parent.nadia@example.com",
+      motDePasse: generateParentPassword("Parent Nadia Ebwelle"),
+      nom: "Parent Nadia Ebwelle",
+      role: "parent",
+      eleveId: 5,
+      actif: true,
+      createdAt: new Date().toISOString()
+    }
+  ];
+  
+  return useIndexedDB<Utilisateur[]>("utilisateurs", initialUtilisateurs);
+}
+
+export function useSessionsStore() {
+  const initialSessions: Session[] = [];
+  return useIndexedDB("sessions", initialSessions);
+}
+
+// ========== HOOK POUR LA GESTION DES ÉLÈVES AVEC CRÉATION AUTOMATIQUE DE COMPTE PARENT ==========
+export function useElevesWithParentAccount() {
+  const [eleves, setEleves, loadingEleves] = useElevesStore();
+  const [utilisateurs, setUtilisateurs, loadingUtilisateurs] = useUtilisateursStore();
+  
+  const isLoading = loadingEleves || loadingUtilisateurs;
+  
+  const createEleveWithParentAccount = async (
+    nouvelleEleve: Omit<Eleve, 'id'>,
+    onSuccess?: (eleve: Eleve, parentAccount: Utilisateur | null) => void
+  ) => {
+    // 1. Créer l'ID du nouvel élève
+    const newId = Math.max(...eleves.map(e => e.id), 0) + 1;
+    const eleveComplet: Eleve = { ...nouvelleEleve, id: newId };
+    
+    // 2. Ajouter l'élève
+    const nouveauxEleves = [...eleves, eleveComplet];
+    setEleves(nouveauxEleves);
+    
+    let parentAccount: Utilisateur | null = null;
+    
+    // 3. Créer le compte parent si les informations sont fournies
+    if (nouvelleEleve.parentNom && nouvelleEleve.parentEmail) {
+      // Générer le mot de passe (prénom + 123)
+      let prenom = nouvelleEleve.parentNom.split(' ')[0].toLowerCase();
+      // Supprimer les accents
+      prenom = prenom.normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+      const motDePasse = `${prenom}123`;
+      
+      // Créer le compte parent
+      const newParentId = Math.max(...utilisateurs.map(u => u.id), 0) + 1;
+      parentAccount = {
+        id: newParentId,
+        email: nouvelleEleve.parentEmail,
+        motDePasse: motDePasse,
+        nom: nouvelleEleve.parentNom,
+        role: "parent",
+        eleveId: newId,
+        actif: true,
+        createdAt: new Date().toISOString()
+      };
+      
+      const nouveauxUtilisateurs = [...utilisateurs, parentAccount];
+      setUtilisateurs(nouveauxUtilisateurs);
+      
+      // Sauvegarde forcée dans localStorage pour déboguer
+      try {
+        localStorage.setItem('utilisateurs_backup', JSON.stringify(nouveauxUtilisateurs));
+        console.log('✅ Compte parent sauvegardé dans localStorage');
+      } catch (e) {
+        console.error('Erreur sauvegarde localStorage:', e);
+      }
+      
+      console.log(`✅ Compte parent créé pour ${nouvelleEleve.parentNom}`);
+      console.log(`📧 Email: ${parentAccount.email}`);
+      console.log(`🔑 Mot de passe: ${parentAccount.motDePasse}`);
+    }
+    
+    // 4. Callback de succès
+    if (onSuccess) {
+      onSuccess(eleveComplet, parentAccount);
+    }
+    
+    return { eleve: eleveComplet, parentAccount };
+  };
+  
+  const updateEleveWithParentAccount = async (
+    eleveId: number,
+    updatedData: Partial<Eleve>,
+    onSuccess?: (eleve: Eleve, parentAccount: Utilisateur | null) => void
+  ) => {
+    // 1. Trouver l'élève existant
+    const existingEleve = eleves.find(e => e.id === eleveId);
+    if (!existingEleve) return null;
+    
+    // 2. Mettre à jour l'élève
+    const eleveMisAJour = { ...existingEleve, ...updatedData };
+    const nouveauxEleves = eleves.map(e => e.id === eleveId ? eleveMisAJour : e);
+    setEleves(nouveauxEleves);
+    
+    let parentAccount: Utilisateur | null = null;
+    
+    // 3. Si les infos parent ont changé, mettre à jour ou créer le compte parent
+    if (updatedData.parentNom !== undefined || updatedData.parentEmail !== undefined) {
+      const parentExistant = utilisateurs.find(u => u.role === "parent" && u.eleveId === eleveId);
+      
+      if (parentExistant) {
+        // Mettre à jour le compte existant
+        const updatedParent = {
+          ...parentExistant,
+          email: updatedData.parentEmail || parentExistant.email,
+          nom: updatedData.parentNom || parentExistant.nom,
+          motDePasse: updatedData.parentNom ? generateParentPassword(updatedData.parentNom) : parentExistant.motDePasse
+        };
+        const nouveauxUtilisateurs = utilisateurs.map(u => u.id === parentExistant.id ? updatedParent : u);
+        setUtilisateurs(nouveauxUtilisateurs);
+        parentAccount = updatedParent;
+      } else if (updatedData.parentNom && updatedData.parentEmail) {
+        // Créer un nouveau compte
+        const newParentId = Math.max(...utilisateurs.map(u => u.id), 0) + 1;
+        parentAccount = {
+          id: newParentId,
+          email: updatedData.parentEmail,
+          motDePasse: generateParentPassword(updatedData.parentNom),
+          nom: updatedData.parentNom,
+          role: "parent",
+          eleveId: eleveId,
+          actif: true,
+          createdAt: new Date().toISOString()
+        };
+        const nouveauxUtilisateurs = [...utilisateurs, parentAccount];
+        setUtilisateurs(nouveauxUtilisateurs);
+        console.log(`✅ Compte parent créé pour ${updatedData.parentNom}`);
+      }
+    }
+    
+    if (onSuccess) {
+      onSuccess(eleveMisAJour, parentAccount);
+    }
+    
+    return { eleve: eleveMisAJour, parentAccount };
+  };
+  
+  const deleteEleveWithParentAccount = async (eleveId: number) => {
+    // Supprimer l'élève
+    const nouveauxEleves = eleves.filter(e => e.id !== eleveId);
+    setEleves(nouveauxEleves);
+    
+    // Supprimer le compte parent associé
+    const nouveauxUtilisateurs = utilisateurs.filter(u => !(u.role === "parent" && u.eleveId === eleveId));
+    setUtilisateurs(nouveauxUtilisateurs);
+    
+    console.log(`🗑️ Élève ${eleveId} et son compte parent supprimés`);
+  };
+  
+  return {
+    eleves,
+    setEleves,
+    utilisateurs,
+    setUtilisateurs,
+    isLoading,
+    createEleveWithParentAccount,
+    updateEleveWithParentAccount,
+    deleteEleveWithParentAccount
+  };
 }

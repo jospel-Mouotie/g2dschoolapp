@@ -1,0 +1,30 @@
+:root {
+  /* Primary palette */
+  --color-primary: 226 68 68; /* example: #e24444 */
+  --color-primary-light: 252 165 165; /* #fca5a5 */
+  --color-primary-dark: 165 32 32; /* #a52020 */
+
+  /* Secondary / accent */
+  --color-accent: 59 130 246; /* #3b82f6 */
+  --color-accent-light: 147 197 253; /* #93c5fd */
+  --color-accent-dark: 30 64 175; /* #1e40af */
+
+  /* UI neutrals */
+  --color-bg: 248 250 252; /* #f8fafc */
+  --color-surface: 255 255 255; /* #ffffff */
+  --color-surface-80: 255 255 255 / 0.8; /* semi-transparent */
+  --color-border: 226 232 240; /* #e2e8f0 */
+
+  /* Text colors */
+  --color-text-primary: 15 23 42; /* #0f172a */
+  --color-text-muted: 107 114 128; /* #6b7280 */
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --color-bg: 15 23 42; /* #0f172a */
+    --color-surface: 30 41 59; /* #1e293b */
+    --color-text-primary: 255 255 255; /* #ffffff */
+    --color-text-muted: 156 163 175; /* #9ca3af */
+  }
+}
