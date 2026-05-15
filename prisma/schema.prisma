@@ -1,4 +1,3 @@
-// prisma/schema.prisma
 generator client {
   provider = "prisma-client-js"
 }
@@ -41,8 +40,8 @@ model Enseignant {
   name          String
   email         String        @unique
   phone         String
-  matieres      String        // Stocké comme JSON string
-  classes       String        // Stocké comme JSON string
+  matieres      String
+  classes       String
   status        String        @default("Titulaire")
   photo         String?
   bureau        String?
@@ -176,16 +175,16 @@ model Absence {
   eleve         Eleve      @relation(fields: [eleveId], references: [id])
   coursId       String
   cours         Cours      @relation(fields: [coursId], references: [id])
-  date         DateTime   @default(now())
-  heureDebut   String
-  heureFin     String
-  duree        Float
-  justifiee    Boolean    @default(false)
-  motif        String?
-  enseignantId Int
-  enseignant   Enseignant @relation(fields: [enseignantId], references: [id])
-  createdAt    DateTime   @default(now())
-  heuresAbsence Float     @default(0)
+  date          DateTime   @default(now())
+  heureDebut    String
+  heureFin      String
+  duree         Float
+  justifiee     Boolean    @default(false)
+  motif         String?
+  enseignantId  Int
+  enseignant    Enseignant @relation(fields: [enseignantId], references: [id])
+  createdAt     DateTime   @default(now())
+  heuresAbsence Float      @default(0)
   semestre      String?
   mois          String?
   anneeScolaire String?
