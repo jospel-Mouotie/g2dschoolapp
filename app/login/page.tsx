@@ -32,14 +32,11 @@ export default function LoginPage() {
       const data = await response.json();
 
       if (response.ok && data.token) {
-        // Stocker le token et l'utilisateur dans localStorage
         localStorage.setItem('token', data.token);
         localStorage.setItem('user', JSON.stringify(data.user));
         
-        // Attendre un court instant pour que le localStorage soit mis à jour
         await new Promise(resolve => setTimeout(resolve, 100));
         
-        // Rediriger selon le rôle
         if (data.user.role === 'admin') {
           window.location.href = '/';
         } else if (data.user.role === 'enseignant') {
@@ -58,18 +55,32 @@ export default function LoginPage() {
     }
   };
 
+  // Remplir les comptes de démonstration
+  const fillAdmin = () => {
+    setEmail('admin@lyceedeido.cm');
+    setPassword('admin123');
+  };
+
+  const fillTeacher = () => {
+    setEmail('kanga@lyceedeido.cm');
+    setPassword('teacher123');
+  };
+
+  const fillParent = () => {
+    setEmail('jean.mbele@example.com');
+    setPassword('jean123');
+  };
+
   return (
     <div className="min-h-screen flex items-center justify-center bg-[#f8fafc] font-sans selection:bg-indigo-100 selection:text-indigo-900">
       <div className="w-full max-w-[1200px] min-h-[680px] h-[85vh] m-4 flex rounded-3xl overflow-hidden shadow-2xl shadow-indigo-900/10 bg-white relative animate-fade-in">
         
-        {/* Left Side - Visual Presentation (Hidden on mobile) */}
+        {/* Left Side - Visual Presentation */}
         <div className="hidden lg:flex w-1/2 relative bg-slate-900 overflow-hidden flex-col justify-between p-12 lg:p-16">
-          {/* Abstract Background Elements */}
           <div className="absolute top-[-15%] left-[-15%] w-[130%] h-[130%] bg-[radial-gradient(ellipse_at_center,_var(--tw-gradient-stops))] from-indigo-600/20 via-slate-900/0 to-slate-900/0 animate-pulse pointer-events-none" style={{ animationDuration: '8s' }}></div>
           <div className="absolute top-1/4 right-0 w-72 h-72 bg-blue-500/10 rounded-full blur-3xl pointer-events-none"></div>
           <div className="absolute bottom-1/4 left-1/4 w-80 h-80 bg-indigo-500/10 rounded-full blur-3xl pointer-events-none"></div>
           
-          {/* Header */}
           <div className="relative z-10 flex items-center gap-4 animate-slide-in">
             <div className="bg-white/10 p-3.5 rounded-2xl backdrop-blur-md border border-white/10 shadow-xl">
               <School className="text-white" size={32} strokeWidth={1.5} />
@@ -77,7 +88,6 @@ export default function LoginPage() {
             <span className="text-white text-3xl font-bold tracking-tight">G2D School</span>
           </div>
 
-          {/* Hero Content */}
           <div className="relative z-10">
             <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-white/5 border border-white/10 text-indigo-300 text-xs font-semibold uppercase tracking-wider mb-6 backdrop-blur-sm">
               <Sparkles size={14} />
@@ -118,7 +128,6 @@ export default function LoginPage() {
 
         {/* Right Side - Login Form */}
         <div className="w-full lg:w-1/2 flex items-center justify-center p-6 sm:p-12 relative bg-white overflow-y-auto">
-          {/* Mobile Logo */}
           <div className="absolute top-6 left-6 lg:hidden flex items-center gap-3">
             <div className="bg-indigo-600 p-2.5 rounded-xl shadow-lg shadow-indigo-600/20">
               <School className="text-white" size={24} />
@@ -200,6 +209,7 @@ export default function LoginPage() {
               </button>
             </form>
 
+            {/* Comptes de démonstration */}
             <div className="mt-12">
               <div className="relative">
                 <div className="absolute inset-0 flex items-center">
@@ -207,35 +217,63 @@ export default function LoginPage() {
                 </div>
                 <div className="relative flex justify-center text-sm">
                   <span className="px-4 bg-white text-slate-400 font-bold uppercase tracking-wider text-xs">
-                    Comptes de démo
+                    Comptes de démonstration
                   </span>
                 </div>
               </div>
 
-              <div className="mt-6 grid grid-cols-2 gap-3">
+              <div className="mt-6 grid grid-cols-3 gap-3">
+                {/* Admin */}
                 <button 
                   type="button"
-                  onClick={() => { setEmail('admin@lyceedeido.cm'); setPassword('admin123'); }}
-                  className="flex items-center gap-3 p-3 rounded-xl border border-slate-200 hover:border-indigo-600 hover:bg-indigo-50/50 transition-all text-left group"
+                  onClick={fillAdmin}
+                  className="flex flex-col items-center gap-2 p-3 rounded-xl border border-slate-200 hover:border-indigo-600 hover:bg-indigo-50/50 transition-all text-center group"
                 >
-                  <div className="w-10 h-10 rounded-full bg-rose-100 text-rose-600 flex items-center justify-center font-bold">A</div>
+                  <div className="w-10 h-10 rounded-full bg-rose-100 text-rose-600 flex items-center justify-center font-bold text-lg">A</div>
                   <div>
-                    <p className="text-sm font-bold text-slate-800 group-hover:text-indigo-900">Admin</p>
-                    <p className="text-xs text-slate-500 font-medium truncate">Remplir</p>
+                    <p className="text-xs font-bold text-slate-800 group-hover:text-indigo-900">Admin</p>
+                    <p className="text-[10px] text-slate-400">Cliquer pour remplir</p>
                   </div>
                 </button>
                 
+                {/* Enseignant */}
                 <button 
                   type="button"
-                  onClick={() => { setEmail('kanga@lyceedeido.cm'); setPassword('teacher123'); }}
-                  className="flex items-center gap-3 p-3 rounded-xl border border-slate-200 hover:border-indigo-600 hover:bg-indigo-50/50 transition-all text-left group"
+                  onClick={fillTeacher}
+                  className="flex flex-col items-center gap-2 p-3 rounded-xl border border-slate-200 hover:border-indigo-600 hover:bg-indigo-50/50 transition-all text-center group"
                 >
-                  <div className="w-10 h-10 rounded-full bg-blue-100 text-blue-600 flex items-center justify-center font-bold">E</div>
+                  <div className="w-10 h-10 rounded-full bg-blue-100 text-blue-600 flex items-center justify-center font-bold text-lg">P</div>
                   <div>
-                    <p className="text-sm font-bold text-slate-800 group-hover:text-indigo-900">Prof</p>
-                    <p className="text-xs text-slate-500 font-medium truncate">Remplir</p>
+                    <p className="text-xs font-bold text-slate-800 group-hover:text-indigo-900">Enseignant</p>
+                    <p className="text-[10px] text-slate-400">Cliquer pour remplir</p>
                   </div>
                 </button>
+
+                {/* Parent */}
+                <button 
+                  type="button"
+                  onClick={fillParent}
+                  className="flex flex-col items-center gap-2 p-3 rounded-xl border border-slate-200 hover:border-indigo-600 hover:bg-indigo-50/50 transition-all text-center group"
+                >
+                  <div className="w-10 h-10 rounded-full bg-emerald-100 text-emerald-600 flex items-center justify-center font-bold text-lg">M</div>
+                  <div>
+                    <p className="text-xs font-bold text-slate-800 group-hover:text-indigo-900">Parent</p>
+                    <p className="text-[10px] text-slate-400">Cliquer pour remplir</p>
+                  </div>
+                </button>
+              </div>
+
+              {/* Informations supplémentaires */}
+              <div className="mt-4 text-center">
+                <p className="text-[10px] text-slate-400">
+                  👑 Admin: admin@lyceedeido.cm / admin123
+                </p>
+                <p className="text-[10px] text-slate-400">
+                  👨‍🏫 Enseignant: kanga@lyceedeido.cm / teacher123
+                </p>
+                <p className="text-[10px] text-slate-400">
+                  👨‍👩‍👧 Parent: jean.mbele@example.com / jean123
+                </p>
               </div>
             </div>
 
