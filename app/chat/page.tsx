@@ -1,4 +1,4 @@
-// app/chat/page.tsx - Version corrigée
+// app/chat/page.tsx
 "use client";
 import { useState, useRef, useEffect, useMemo, useCallback } from "react";
 import {
@@ -8,13 +8,13 @@ import {
 import { useAuth } from "@/contexts/AuthContext";
 import { useApi } from "@/hooks/useApi";
 
-// Fonction pour parser les champs JSON
 function parseJsonField(field: any): string[] {
   if (!field) return [];
   if (Array.isArray(field)) return field;
   try {
     return JSON.parse(field);
   } catch {
+    console.warn("Erreur parsing JSON:", field);
     return [];
   }
 }
@@ -44,11 +44,12 @@ interface Enseignant {
   id: number;
   name: string;
   email: string;
+  phone: string;
+  status: string;
   matieres: string;
   classes: string;
 }
 
-// Hook personnalisé pour les messages
 function useMessages() {
   const { token } = useAuth();
   const { fetchWithAuth } = useApi();
@@ -166,6 +167,16 @@ export default function ChatPage() {
         const elevesData = elevesRes.ok ? await elevesRes.json() : [];
         const enseignantsData = enseignantsRes.ok ? await enseignantsRes.json() : [];
         
+        console.log("========== DONNÉES CHARGÉES ==========");
+        console.log("👨‍🎓 Élèves:", elevesData.length);
+        console.log("👨‍🏫 Enseignants:", enseignantsData.length);
+        console.log("📋 Détail enseignants:", enseignantsData.map((e: any) => ({ 
+          id: e.id, 
+          name: e.name, 
+          classes: e.classes,
+          matieres: e.matieres
+        })));
+        
         setEleves(Array.isArray(elevesData) ? elevesData : []);
         setEnseignants(Array.isArray(enseignantsData) ? enseignantsData : []);
       } catch (err) {
@@ -181,14 +192,19 @@ export default function ChatPage() {
   // Récupérer l'enseignant connecté
   const enseignantConnecte = useMemo(() => {
     if (!isTeacher || !user?.enseignantId) return null;
-    return enseignants.find(e => e.id === user.enseignantId);
+    const enseignant = enseignants.find(e => e.id === user.enseignantId);
+    console.log("🔍 Enseignant connecté:", enseignant?.name);
+    console.log("📦 Classes (brut):", enseignant?.classes);
+    return enseignant;
   }, [isTeacher, user, enseignants]);
 
   // Classes auxquelles l'enseignant a accès
   const classesAccessibles = useMemo(() => {
     if (isAdmin) return [];
     if (isTeacher && enseignantConnecte) {
-      return parseJsonField(enseignantConnecte.classes);
+      const classes = parseJsonField(enseignantConnecte.classes);
+      console.log("📋 Classes parsées pour l'enseignant:", classes);
+      return classes;
     }
     return [];
   }, [isAdmin, isTeacher, enseignantConnecte]);
@@ -197,20 +213,25 @@ export default function ChatPage() {
   const parentClasse = useMemo(() => {
     if (isParent && user?.eleveId) {
       const eleve = eleves.find(e => e.id === user.eleveId);
+      console.log("👨‍👩‍👧 Parent - Classe de l'élève:", eleve?.classe);
       return eleve?.classe || null;
     }
     return null;
   }, [isParent, user, eleves]);
 
-  // Liste des classes disponibles (admin voit toutes les classes)
+  // Liste des classes disponibles
   const classesDisponibles = useMemo(() => {
     if (isAdmin) {
-      return [...new Set(eleves.map(e => e.classe))].sort();
+      const allClasses = [...new Set(eleves.map(e => e.classe))].sort();
+      console.log("👑 Admin - Toutes les classes:", allClasses);
+      return allClasses;
     }
     if (isTeacher) {
-      return classesAccessibles.sort();
+      console.log("👨‍🏫 Enseignant - Classes accessibles:", classesAccessibles);
+      return classesAccessibles;
     }
     if (isParent && parentClasse) {
+      console.log("👨‍👩‍👧 Parent - Sa classe:", [parentClasse]);
       return [parentClasse];
     }
     return [];
@@ -220,6 +241,7 @@ export default function ChatPage() {
   useEffect(() => {
     if (classesDisponibles.length > 0 && !selectedClasse) {
       setSelectedClasse(classesDisponibles[0]);
+      console.log("🎯 Classe sélectionnée par défaut:", classesDisponibles[0]);
     }
   }, [classesDisponibles, selectedClasse]);
 
@@ -229,7 +251,6 @@ export default function ChatPage() {
     
     let filtered = [...messages];
     
-    // Filtrer par classe sélectionnée
     if (selectedClasse) {
       if (isParent) {
         filtered = filtered.filter(m => 
@@ -241,7 +262,6 @@ export default function ChatPage() {
       }
     }
     
-    // Appliquer la recherche
     if (search) {
       filtered = filtered.filter(m => 
         m.contenu.toLowerCase().includes(search.toLowerCase()) ||
@@ -252,63 +272,56 @@ export default function ChatPage() {
     return filtered.sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
   }, [messages, selectedClasse, search, isParent]);
 
-  // Envoyer un message
- // Dans app/chat/page.tsx, remplace la fonction handleSendMessage par celle-ci
-
-const handleSendMessage = async () => {
-  if (!newMessage.trim()) {
-    return;
-  }
-  if (!user) {
-    alert("Vous devez être connecté");
-    return;
-  }
-  if (!selectedClasse) {
-    alert("Veuillez sélectionner une classe");
-    return;
-  }
-  
-  let contenu = newMessage;
-  
-  if (replyTo) {
-    contenu = `> @${replyTo.expediteur}: ${replyTo.contenu.substring(0, 60)}${replyTo.contenu.length > 60 ? "..." : ""}\n\n${newMessage}`;
-  }
-  
-  const expediteurRole = isAdmin ? "admin" : isTeacher ? "teacher" : "parent";
-  const expediteurAvatar = `https://ui-avatars.com/api/?name=${encodeURIComponent(user.nom || "User")}&background=${isAdmin ? "3b82f6" : isTeacher ? "10b981" : "8b5cf6"}&color=fff`;
-  
-  let destinataireClasse;
-  if (isAdmin && selectedClasse === "all") {
-    destinataireClasse = "all";
-  } else {
-    destinataireClasse = `parent:${selectedClasse}`;
-  }
-  
-  const newMsg = {
-    expediteur: user.nom || "Utilisateur",
-    expediteurRole: expediteurRole,
-    expediteurAvatar: expediteurAvatar,
-    destinataireClasse: destinataireClasse,
-    contenu: contenu,
-    date: new Date().toISOString(),
-    lu: false
+  const handleSendMessage = async () => {
+    if (!newMessage.trim()) return;
+    if (!user) {
+      alert("Vous devez être connecté");
+      return;
+    }
+    if (!selectedClasse) {
+      alert("Veuillez sélectionner une classe");
+      return;
+    }
+    
+    let contenu = newMessage;
+    
+    if (replyTo) {
+      contenu = `> @${replyTo.expediteur}: ${replyTo.contenu.substring(0, 60)}${replyTo.contenu.length > 60 ? "..." : ""}\n\n${newMessage}`;
+    }
+    
+    const expediteurRole = isAdmin ? "admin" : isTeacher ? "teacher" : "parent";
+    const expediteurAvatar = `https://ui-avatars.com/api/?name=${encodeURIComponent(user.nom || "User")}&background=${isAdmin ? "3b82f6" : isTeacher ? "10b981" : "8b5cf6"}&color=fff`;
+    
+    let destinataireClasse;
+    if (isAdmin && selectedClasse === "all") {
+      destinataireClasse = "all";
+    } else {
+      destinataireClasse = `parent:${selectedClasse}`;
+    }
+    
+    const newMsg = {
+      expediteur: user.nom || "Utilisateur",
+      expediteurRole: expediteurRole,
+      expediteurAvatar: expediteurAvatar,
+      destinataireClasse: destinataireClasse,
+      contenu: contenu,
+      date: new Date().toISOString(),
+      lu: false
+    };
+    
+    const sent = await sendMessageToApi(newMsg);
+    if (sent) {
+      setNewMessage("");
+      setReplyTo(null);
+    }
   };
-  
-  const sent = await sendMessageToApi(newMsg);
-  if (sent) {
-    setNewMessage("");
-    setReplyTo(null);
-  }
-};
 
-  // Supprimer un message (admin seulement)
   const handleDeleteMessage = (id: number) => {
     if (isAdmin && confirm("Supprimer ce message ?")) {
       deleteMessageApi(id);
     }
   };
 
-  // Marquer comme lu
   const handleMarkAsRead = (msg: Message) => {
     if (!msg.lu && msg.expediteur !== user?.nom) {
       markAsReadApi(msg.id);
@@ -415,6 +428,28 @@ const handleSendMessage = async () => {
 
   // Vue Enseignant
   if (isTeacher) {
+    if (classesDisponibles.length === 0) {
+      return (
+        <div className="p-6 space-y-8 bg-gradient-to-br from-slate-50 to-white min-h-screen">
+          <div>
+            <h1 className="text-3xl font-bold bg-gradient-to-r from-slate-800 to-slate-600 bg-clip-text text-transparent flex items-center gap-3">
+              <div className="p-2.5 bg-white rounded-2xl shadow-md border border-slate-200 text-blue-600">
+                <MessageSquare size={28} />
+              </div>
+              Communication
+            </h1>
+            <p className="text-sm text-slate-500 mt-1 ml-14">Aucune classe assignée</p>
+          </div>
+          <div className="bg-white rounded-2xl border border-slate-200 shadow-sm p-8 text-center">
+            <div className="text-6xl mb-4">📚</div>
+            <h2 className="text-xl font-bold text-slate-800 mb-2">Aucune classe assignée</h2>
+            <p className="text-slate-500">Vous n'êtes pas encore assigné à des classes.</p>
+            <p className="text-xs text-slate-400 mt-2">Contactez l'administrateur pour obtenir des classes.</p>
+          </div>
+        </div>
+      );
+    }
+
     return (
       <div className="p-6 space-y-8 bg-gradient-to-br from-slate-50 to-white min-h-screen">
         <div>
@@ -425,6 +460,7 @@ const handleSendMessage = async () => {
             Communication avec les parents
           </h1>
           <p className="text-sm text-slate-500 mt-1 ml-14">Envoyez des messages aux parents de vos classes</p>
+          <p className="text-xs text-green-600 mt-1 ml-14">✓ {classesDisponibles.length} classe(s) disponible(s)</p>
         </div>
 
         <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
@@ -433,30 +469,24 @@ const handleSendMessage = async () => {
             <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
               <div className="p-4 border-b border-slate-100 bg-slate-50/50">
                 <h3 className="font-bold text-slate-700 flex items-center gap-2">
-                  <Filter size={16}/> Mes classes
+                  <Filter size={16}/> Mes classes ({classesDisponibles.length})
                 </h3>
               </div>
               
               <div className="divide-y divide-slate-100">
-                {classesDisponibles.length === 0 ? (
-                  <div className="px-4 py-6 text-center text-slate-400 text-sm">
-                    Aucune classe assignée
-                  </div>
-                ) : (
-                  classesDisponibles.map(classe => (
-                    <button
-                      key={classe}
-                      onClick={() => { setSelectedClasse(classe); setReplyTo(null); }}
-                      className={`w-full text-left px-4 py-3 hover:bg-slate-50 transition flex items-center gap-3 ${selectedClasse === classe ? "bg-blue-50 border-l-4 border-blue-500" : ""}`}
-                    >
-                      <Users size={18} className="text-blue-500"/>
-                      <div>
-                        <p className="font-medium text-sm">{classe}</p>
-                        <p className="text-[10px] text-slate-400">Envoyer un message aux parents</p>
-                      </div>
-                    </button>
-                  ))
-                )}
+                {classesDisponibles.map(classe => (
+                  <button
+                    key={classe}
+                    onClick={() => { setSelectedClasse(classe); setReplyTo(null); }}
+                    className={`w-full text-left px-4 py-3 hover:bg-slate-50 transition flex items-center gap-3 ${selectedClasse === classe ? "bg-blue-50 border-l-4 border-blue-500" : ""}`}
+                  >
+                    <Users size={18} className="text-blue-500"/>
+                    <div>
+                      <p className="font-medium text-sm">{classe}</p>
+                      <p className="text-[10px] text-slate-400">Envoyer un message aux parents</p>
+                    </div>
+                  </button>
+                ))}
               </div>
             </div>
           </div>
@@ -571,7 +601,6 @@ const handleSendMessage = async () => {
   }
 
   // Vue Admin
-  // Liste des classes disponibles (admin voit toutes les classes)
   const adminClasses = ["all", ...classesDisponibles];
   
   return (
@@ -587,12 +616,11 @@ const handleSendMessage = async () => {
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
-        {/* SIDEBAR - CLASSES */}
         <div className="lg:col-span-1">
           <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
             <div className="p-4 border-b border-slate-100 bg-slate-50/50">
               <h3 className="font-bold text-slate-700 flex items-center gap-2">
-                <Filter size={16}/> Classes
+                <Filter size={16}/> Classes ({adminClasses.length})
               </h3>
             </div>
             <div className="divide-y divide-slate-100">
@@ -620,7 +648,6 @@ const handleSendMessage = async () => {
           </div>
         </div>
 
-        {/* ZONE DE CHAT */}
         <div className="lg:col-span-3 bg-white rounded-2xl border border-slate-200 shadow-sm flex flex-col h-[calc(100vh-250px)]">
           <div className="p-4 border-b border-slate-100 flex justify-between items-center bg-slate-50/30 rounded-t-2xl">
             <div>
